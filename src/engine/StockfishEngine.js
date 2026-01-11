@@ -186,6 +186,128 @@ export class StockfishEngine {
   }
 
   /**
+   * Get detailed analysis with evaluation and multiple move options.
+   * @param {string} fen - FEN string of the position
+   * @param {number} [numMoves=3] - Number of top moves to analyze
+   * @param {number} [depth] - Search depth (defaults to ENGINE_CONFIG.DEFAULT_DEPTH)
+   * @returns {Promise<Object>} Analysis object with moves and evaluations
+   * @throws {Error} If engine is not ready or times out
+   */
+  async getAnalysis(fen, numMoves = 3, depth = ENGINE_CONFIG.DEFAULT_DEPTH) {
+    return new Promise((resolve, reject) => {
+      const requestId = Date.now() + Math.random();
+      const timeout = setTimeout(() => {
+        this.messageHandlers.delete(requestId);
+        reject(new Error("Engine analysis timeout"));
+      }, ENGINE_CONFIG.MOVE_TIMEOUT * 2); // Longer timeout for analysis
+
+      const moves = [];
+      let lastEvaluation = null;
+
+      try {
+        // Set MultiPV option for multiple variations
+        this.sendCommand(`setoption name MultiPV value ${numMoves}`);
+        this.sendCommand(`position fen ${fen}`);
+        this.sendCommand(`go depth ${depth}`);
+
+        this.messageHandlers.set(requestId, (line) => {
+          // Parse info lines for move evaluations
+          if (line.startsWith("info") && line.includes("pv")) {
+            const analysis = this.parseInfoLine(line);
+            if (analysis) {
+              // Update or add move to list
+              const existingIndex = moves.findIndex(m => m.multipv === analysis.multipv);
+              if (existingIndex >= 0) {
+                moves[existingIndex] = analysis;
+              } else {
+                moves.push(analysis);
+              }
+              
+              // Track the last evaluation (for the best move)
+              if (analysis.multipv === 1) {
+                lastEvaluation = analysis.score;
+              }
+            }
+          }
+          
+          if (line.startsWith("bestmove")) {
+            clearTimeout(timeout);
+            this.messageHandlers.delete(requestId);
+            
+            // Reset MultiPV to 1
+            this.sendCommand(`setoption name MultiPV value 1`);
+            
+            // Sort moves by multipv
+            moves.sort((a, b) => a.multipv - b.multipv);
+            
+            resolve({
+              bestMove: line.split(" ")[1],
+              evaluation: lastEvaluation,
+              moves: moves,
+              depth: depth
+            });
+          }
+        });
+      } catch (error) {
+        clearTimeout(timeout);
+        this.messageHandlers.delete(requestId);
+        // Reset MultiPV on error
+        try {
+          this.sendCommand(`setoption name MultiPV value 1`);
+        } catch (e) {
+          // Ignore
+        }
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Parse UCI info line to extract evaluation and move information.
+   * @param {string} line - UCI info line
+   * @returns {Object|null} Parsed analysis data or null
+   * @private
+   */
+  parseInfoLine(line) {
+    const parts = line.split(" ");
+    const result = {
+      multipv: 1,
+      score: null,
+      move: null,
+      depth: 0
+    };
+
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i] === "multipv" && i + 1 < parts.length) {
+        result.multipv = parseInt(parts[i + 1]);
+      } else if (parts[i] === "depth" && i + 1 < parts.length) {
+        result.depth = parseInt(parts[i + 1]);
+      } else if (parts[i] === "score") {
+        // Next part is either 'cp' (centipawns) or 'mate' (mate in N)
+        if (i + 2 < parts.length) {
+          if (parts[i + 1] === "cp") {
+            result.score = {
+              type: "cp",
+              value: parseInt(parts[i + 2])
+            };
+          } else if (parts[i + 1] === "mate") {
+            result.score = {
+              type: "mate",
+              value: parseInt(parts[i + 2])
+            };
+          }
+        }
+      } else if (parts[i] === "pv" && i + 1 < parts.length) {
+        // Principal variation - first move is the suggested move
+        result.move = parts[i + 1];
+      }
+    }
+
+    // Only return if we have a move and score
+    return (result.move && result.score) ? result : null;
+  }
+
+  /**
    * Send a UCI command to the engine.
    * @param {string} cmd - UCI command to send
    * @throws {Error} If engine is not initialized or has crashed

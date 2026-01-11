@@ -1,6 +1,6 @@
 {
   "name": "chess-helper",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "A command-line chess assistant powered by Stockfish that helps analyze positions and suggests the best moves during your games",
   "main": "src/index.js",
   "type": "module",

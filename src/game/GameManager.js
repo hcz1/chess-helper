@@ -1,5 +1,6 @@
 import { Chess } from "chess.js";
 import { MoveValidator } from "./MoveValidator.js";
+import { GameHistory } from "./GameHistory.js";
 
 /**
  * Manages chess game state and operations.
@@ -16,6 +17,8 @@ export class GameManager {
     this.isPlayingWhite = playerColor === "w";
     this.myColorName = this.isPlayingWhite ? "white" : "black";
     this.opponentColorName = this.isPlayingWhite ? "black" : "white";
+    this.history = new GameHistory();
+    this.startingFen = this.game.fen();
   }
 
   /**
@@ -37,7 +40,12 @@ export class GameManager {
    * @throws {Error} If move is invalid
    */
   makeMove(moveString) {
-    return MoveValidator.validateMove(this.game, moveString);
+    const moveResult = MoveValidator.validateMove(this.game, moveString);
+    
+    // Add move to history
+    this.history.addMove(moveResult, this.game.fen());
+    
+    return moveResult;
   }
 
   /**
@@ -130,5 +138,80 @@ export class GameManager {
    */
   getOpponentColorName() {
     return this.opponentColorName;
+  }
+
+  /**
+   * Undo the last move.
+   * @returns {boolean} True if undo was successful
+   */
+  undo() {
+    const previousFen = this.history.undo();
+    
+    if (previousFen === null) {
+      // No more moves to undo, reset to starting position
+      if (this.history.currentIndex === -1 && this.history.getMoveCount() > 0) {
+        this.game.load(this.startingFen);
+        return true;
+      }
+      return false;
+    }
+    
+    this.game.load(previousFen);
+    return true;
+  }
+
+  /**
+   * Redo a previously undone move.
+   * @returns {boolean} True if redo was successful
+   */
+  redo() {
+    const nextFen = this.history.redo();
+    
+    if (nextFen === null) {
+      return false;
+    }
+    
+    this.game.load(nextFen);
+    return true;
+  }
+
+  /**
+   * Check if undo is available.
+   * @returns {boolean} True if can undo
+   */
+  canUndo() {
+    return this.history.canUndo();
+  }
+
+  /**
+   * Check if redo is available.
+   * @returns {boolean} True if can redo
+   */
+  canRedo() {
+    return this.history.canRedo();
+  }
+
+  /**
+   * Get the move history.
+   * @returns {GameHistory} History object
+   */
+  getHistory() {
+    return this.history;
+  }
+
+  /**
+   * Get the last move made.
+   * @returns {Object|null} Last move object or null
+   */
+  getLastMove() {
+    return this.history.getLastMove();
+  }
+
+  /**
+   * Get the chess.js game instance.
+   * @returns {Chess} The underlying chess.js instance
+   */
+  getGame() {
+    return this.game;
   }
 }

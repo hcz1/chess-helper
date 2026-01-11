@@ -3,6 +3,69 @@ import { GameManager } from "./game/GameManager.js";
 import { MoveValidator } from "./game/MoveValidator.js";
 import { InputHandler } from "./ui/InputHandler.js";
 import { OutputFormatter } from "./ui/OutputFormatter.js";
+import { CommandParser } from "./ui/CommandParser.js";
+import { PositionAnalyzer } from "./analysis/PositionAnalyzer.js";
+
+/**
+ * Handle special commands during gameplay.
+ * @param {Object} command - Parsed command object
+ * @param {GameManager} game - Game manager instance
+ * @param {StockfishEngine} engine - Chess engine instance
+ * @returns {Promise<boolean>} True if should continue game, false if should exit
+ */
+async function handleCommand(command, game, engine) {
+  switch (command.name) {
+    case 'board':
+      OutputFormatter.displayBoard(game, game.getLastMove());
+      break;
+    
+    case 'history':
+      OutputFormatter.displayHistory(game.getHistory());
+      break;
+    
+    case 'undo':
+      if (game.canUndo()) {
+        game.undo();
+        OutputFormatter.undoConfirmation(1);
+        OutputFormatter.displayBoard(game, game.getLastMove());
+      } else {
+        OutputFormatter.warning('No moves to undo.');
+      }
+      break;
+    
+    case 'redo':
+      if (game.canRedo()) {
+        game.redo();
+        OutputFormatter.redoConfirmation(1);
+        OutputFormatter.displayBoard(game, game.getLastMove());
+      } else {
+        OutputFormatter.warning('No moves to redo.');
+      }
+      break;
+    
+    case 'analyze':
+      try {
+        OutputFormatter.analyzing();
+        const topMoves = await PositionAnalyzer.getTopMoves(engine, game.getFEN(), 3);
+        OutputFormatter.displayTopMoves(topMoves);
+      } catch (error) {
+        OutputFormatter.warning(`Analysis failed: ${error.message}`);
+      }
+      break;
+    
+    case 'help':
+      OutputFormatter.displayHelp(CommandParser.getCommandHelp());
+      break;
+    
+    case 'quit':
+      return false;
+    
+    default:
+      OutputFormatter.warning('Unknown command.');
+  }
+  
+  return true;
+}
 
 /**
  * Main game loop - handles turn-by-turn gameplay.
@@ -11,6 +74,9 @@ import { OutputFormatter } from "./ui/OutputFormatter.js";
  * @param {InputHandler} input - Input handler instance
  */
 async function gameLoop(game, engine, input) {
+  // Display initial board
+  OutputFormatter.displayBoard(game, null);
+  
   while (!game.isGameOver()) {
     if (game.isPlayerTurn()) {
       // Player's turn - get suggestion and move
@@ -19,14 +85,24 @@ async function gameLoop(game, engine, input) {
         suggestedMove = await engine.getBestMove(game.getFEN());
       } catch (error) {
         OutputFormatter.suggestionWarning(error.message);
-        suggestedMove = "N/A";
+        suggestedMove = null;
       }
 
-      const myMove = await input.getMove(`Your move (suggested: ${suggestedMove}): `);
+      const prompt = suggestedMove 
+        ? `Your move (suggested: ${suggestedMove}, press Enter to use): `
+        : `Your move: `;
+      
+      const myMove = await input.getMove(prompt, suggestedMove);
 
-      if (myMove.toLowerCase() === "quit") {
-        OutputFormatter.goodbye();
-        return;
+      // Check for commands
+      if (input.isCommand(myMove)) {
+        const command = input.parseCommand(myMove);
+        const shouldContinue = await handleCommand(command, game, engine);
+        if (!shouldContinue) {
+          OutputFormatter.goodbye();
+          return;
+        }
+        continue;
       }
 
       // Validate and apply player's move
@@ -37,6 +113,9 @@ async function gameLoop(game, engine, input) {
         OutputFormatter.invalidMove();
         continue;
       }
+
+      // Display board after player's move
+      OutputFormatter.displayBoard(game, game.getLastMove());
 
       // Check if game is over after player's move
       if (game.isGameOver()) {
@@ -50,9 +129,15 @@ async function gameLoop(game, engine, input) {
       // Opponent's turn
       const opponentMove = await input.getMove(`${game.getOpponentColorName()}'s move: `);
 
-      if (opponentMove.toLowerCase() === "quit") {
-        OutputFormatter.goodbye();
-        return;
+      // Check for commands (opponent can also use commands)
+      if (input.isCommand(opponentMove)) {
+        const command = input.parseCommand(opponentMove);
+        const shouldContinue = await handleCommand(command, game, engine);
+        if (!shouldContinue) {
+          OutputFormatter.goodbye();
+          return;
+        }
+        continue;
       }
 
       // Validate and apply opponent's move
@@ -63,6 +148,9 @@ async function gameLoop(game, engine, input) {
         OutputFormatter.invalidMove();
         continue;
       }
+
+      // Display board after opponent's move
+      OutputFormatter.displayBoard(game, game.getLastMove());
 
       // Check if game is over after opponent's move
       if (game.isGameOver()) {

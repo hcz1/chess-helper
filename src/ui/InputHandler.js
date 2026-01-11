@@ -1,4 +1,5 @@
 import readline from "readline";
+import { CommandParser } from "./CommandParser.js";
 
 /**
  * Handles user input via readline interface.
@@ -27,22 +28,50 @@ export class InputHandler {
    * @throws {Error} If invalid color is entered
    */
   async getPlayerColor() {
-    const colour = (await this.ask("Are you playing white or black? (w/b): ")).toLowerCase();
-    
+    const colour = (
+      await this.ask("Are you playing white or black? (w/b): ")
+    ).toLowerCase();
+
     if (colour !== "w" && colour !== "b") {
       throw new Error("Invalid color choice. Please enter 'w' or 'b'");
     }
-    
+
     return colour;
   }
 
   /**
    * Get a move from the user.
    * @param {string} prompt - Prompt to display
+   * @param {string} [suggestedMove] - Optional suggested move (used when Enter is pressed)
    * @returns {Promise<string>} User's move input
    */
-  async getMove(prompt) {
-    return await this.ask(prompt);
+  async getMove(prompt, suggestedMove = null) {
+    const input = await this.ask(prompt);
+
+    // If input is empty and we have a suggested move, use it
+    if (input.trim() === "" && suggestedMove) {
+      return suggestedMove;
+    }
+
+    return input;
+  }
+
+  /**
+   * Check if input is a command.
+   * @param {string} input - User input
+   * @returns {boolean} True if input is a command
+   */
+  isCommand(input) {
+    return CommandParser.isCommand(input);
+  }
+
+  /**
+   * Parse a command from user input.
+   * @param {string} input - User input
+   * @returns {Object|null} Parsed command object or null
+   */
+  parseCommand(input) {
+    return CommandParser.parseCommand(input);
   }
 
   /**
