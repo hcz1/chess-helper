@@ -117,6 +117,20 @@ export class GameManager {
   }
 
   /**
+   * Load a position from FEN string.
+   * @param {string} fen - FEN string to load
+   * @throws {Error} If FEN is invalid
+   */
+  loadFEN(fen) {
+    const success = this.game.load(fen);
+    if (!success) {
+      throw new Error('Invalid FEN string');
+    }
+    this.startingFen = fen;
+    this.history.clear();
+  }
+
+  /**
    * Check if the current player is in check.
    * @returns {boolean} True if in check
    */

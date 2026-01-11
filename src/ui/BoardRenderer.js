@@ -1,3 +1,5 @@
+import chalk from 'chalk';
+
 /**
  * Renders ASCII chess board with Unicode pieces.
  * Provides visual representation of the current game state.
@@ -29,11 +31,11 @@ export class BoardRenderer {
     let output = '\n';
     
     // Column labels
-    output += '  a b c d e f g h\n';
+    output += chalk.dim('  a b c d e f g h') + '\n';
     
     // Render each rank (8 to 1)
     for (let rank = 7; rank >= 0; rank--) {
-      output += `${rank + 1} `;
+      output += chalk.dim(`${rank + 1} `);
       
       for (let file = 0; file < 8; file++) {
         const square = board[rank][file];
@@ -42,17 +44,19 @@ export class BoardRenderer {
         
         if (square) {
           const symbol = this.getPieceSymbol(square);
-          output += isHighlighted ? `[${symbol}]` : `${symbol} `;
+          const coloredSymbol = square.color === 'w' ? chalk.white(symbol) : chalk.gray(symbol);
+          output += isHighlighted ? chalk.bgYellow(coloredSymbol) + ' ' : coloredSymbol + ' ';
         } else {
-          output += isHighlighted ? '[·]' : '· ';
+          const dot = '·';
+          output += isHighlighted ? chalk.bgYellow(dot) + ' ' : chalk.dim(dot) + ' ';
         }
       }
       
-      output += `${rank + 1}\n`;
+      output += chalk.dim(`${rank + 1}`) + '\n';
     }
     
     // Column labels again
-    output += '  a b c d e f g h\n';
+    output += chalk.dim('  a b c d e f g h') + '\n';
     
     return output;
   }
@@ -71,12 +75,12 @@ export class BoardRenderer {
     if (showCaptured) {
       const captured = this.getCapturedPieces(game);
       if (captured.white.length > 0 || captured.black.length > 0) {
-        output += '\nCaptured pieces:\n';
+        output += '\n' + chalk.dim('Captured pieces:') + '\n';
         if (captured.white.length > 0) {
-          output += `  White: ${captured.white.join(' ')}\n`;
+          output += chalk.dim('  White: ') + chalk.red(captured.white.join(' ')) + '\n';
         }
         if (captured.black.length > 0) {
-          output += `  Black: ${captured.black.join(' ')}\n`;
+          output += chalk.dim('  Black: ') + chalk.red(captured.black.join(' ')) + '\n';
         }
       }
     }
@@ -86,7 +90,8 @@ export class BoardRenderer {
       if (advantage !== 0) {
         const color = advantage > 0 ? 'White' : 'Black';
         const value = Math.abs(advantage);
-        output += `\nMaterial: ${color} +${value}\n`;
+        const colorFn = advantage > 0 ? chalk.green : chalk.red;
+        output += '\n' + chalk.dim('Material: ') + colorFn(`${color} +${value}`) + '\n';
       }
     }
     

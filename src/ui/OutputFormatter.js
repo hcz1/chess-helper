@@ -1,27 +1,156 @@
+import chalk from 'chalk';
+import boxen from 'boxen';
+import { table } from 'table';
+import ora from 'ora';
+
+/**
+ * Color scheme for consistent styling throughout the application.
+ */
+const COLORS = {
+  primary: chalk.cyan,
+  success: chalk.green,
+  error: chalk.red.bold,
+  warning: chalk.yellow,
+  info: chalk.blue,
+  highlight: chalk.magenta,
+  dim: chalk.gray,
+  player: chalk.green.bold,
+  opponent: chalk.blue.bold,
+  whitePiece: chalk.white,
+  blackPiece: chalk.gray,
+  coordinates: chalk.dim,
+  checkWarning: chalk.red.bold,
+  suggestion: chalk.cyan,
+  command: chalk.dim,
+};
+
 /**
  * Formats and displays output to the console.
  * Provides consistent messaging and formatting throughout the application.
  */
 export class OutputFormatter {
+  static spinner = null;
+
+  /**
+   * Create a boxed message with consistent styling.
+   * @param {string} content - Content to display in box
+   * @param {Object} options - Boxen options
+   * @returns {string} Boxed message
+   * @private
+   */
+  static createBox(content, options = {}) {
+    const defaultOptions = {
+      padding: 1,
+      margin: 0,
+      borderStyle: 'round',
+      borderColor: 'cyan',
+    };
+    return boxen(content, { ...defaultOptions, ...options });
+  }
+
+  /**
+   * Start a spinner with the given text.
+   * @param {string} text - Text to display with spinner
+   * @returns {Object} Spinner instance
+   */
+  static startSpinner(text) {
+    this.spinner = ora({
+      text: text,
+      color: 'cyan',
+      spinner: 'dots'
+    }).start();
+    return this.spinner;
+  }
+
+  /**
+   * Update the spinner text.
+   * @param {string} text - New text to display
+   */
+  static updateSpinner(text) {
+    if (this.spinner) {
+      this.spinner.text = text;
+    }
+  }
+
+  /**
+   * Complete the spinner with success.
+   * @param {string} text - Success message
+   */
+  static succeedSpinner(text) {
+    if (this.spinner) {
+      this.spinner.succeed(text);
+      this.spinner = null;
+    }
+  }
+
+  /**
+   * Complete the spinner with failure.
+   * @param {string} text - Failure message
+   */
+  static failSpinner(text) {
+    if (this.spinner) {
+      this.spinner.fail(text);
+      this.spinner = null;
+    }
+  }
+
+  /**
+   * Stop the spinner without success or failure.
+   */
+  static stopSpinner() {
+    if (this.spinner) {
+      this.spinner.stop();
+      this.spinner = null;
+    }
+  }
+
+  /**
+   * Execute an async function with a spinner.
+   * @param {string} text - Spinner text
+   * @param {Function} asyncFn - Async function to execute
+   * @returns {Promise} Result of async function
+   */
+  static async withSpinner(text, asyncFn) {
+    const spinner = this.startSpinner(text);
+    try {
+      const result = await asyncFn();
+      this.succeedSpinner(text);
+      return result;
+    } catch (error) {
+      this.failSpinner(`${text} - Failed`);
+      throw error;
+    }
+  }
+
   /**
    * Display welcome message.
    */
   static welcome() {
-    console.log("\n♟ Chess Move Helper\n");
+    const welcomeText = COLORS.primary.bold("♟  Chess Move Helper");
+    const subtitle = chalk.dim("Powered by Stockfish");
+    const box = this.createBox(`${welcomeText}\n${subtitle}`, {
+      borderStyle: 'double',
+      padding: 1,
+      margin: 1,
+      borderColor: 'cyan',
+      textAlignment: 'center',
+    });
+    console.log(box);
   }
 
   /**
    * Display engine initialization message.
    */
   static initializing() {
-    console.log("⏳ Initializing chess engine...");
+    this.startSpinner("Initializing Stockfish engine...");
   }
 
   /**
    * Display engine ready message.
    */
   static engineReady() {
-    console.log("✅ Engine ready!\n");
+    this.succeedSpinner("Engine ready!");
+    console.log();
   }
 
   /**
@@ -29,7 +158,8 @@ export class OutputFormatter {
    * @param {string} playerColor - Player's color name ('white' or 'black')
    */
   static gameStart(playerColor) {
-    console.log(`\nYou are playing as ${playerColor}. Enter 'quit' to exit.\n`);
+    const coloredPlayerColor = playerColor === 'white' ? COLORS.whitePiece(playerColor) : COLORS.blackPiece(playerColor);
+    console.log(`\nYou are playing as ${coloredPlayerColor}. Enter ${COLORS.command("'quit'")} to exit.\n`);
   }
 
   /**
@@ -39,10 +169,11 @@ export class OutputFormatter {
    * @param {boolean} isPlayer - Whether this is the player's move
    */
   static move(colorName, move, isPlayer = false) {
+    const coloredMove = COLORS.highlight(move);
     if (isPlayer) {
-      console.log(`You (${colorName}): ${move}`);
+      console.log(COLORS.player(`You (${colorName}): `) + coloredMove);
     } else {
-      console.log(`${colorName}: ${move}\n`);
+      console.log(COLORS.opponent(`${colorName}: `) + coloredMove + "\n");
     }
   }
 
@@ -50,8 +181,8 @@ export class OutputFormatter {
    * Display invalid move error.
    */
   static invalidMove() {
-    console.log("❌ Invalid move. Please try again.");
-    console.log("   Examples: e4, Nf3, e2e4, O-O\n");
+    console.log(COLORS.error("❌ Invalid move. Please try again."));
+    console.log(COLORS.dim("   Examples: e4, Nf3, e2e4, O-O") + "\n");
   }
 
   /**
@@ -59,22 +190,30 @@ export class OutputFormatter {
    * @param {Object} gameOverInfo - Game over information
    */
   static gameOver(gameOverInfo) {
-    console.log("\n🎮 Game Over!");
-    console.log(gameOverInfo.message);
+    const title = COLORS.primary.bold("🎮 Game Over!");
+    const message = COLORS.info(gameOverInfo.message);
+    const box = this.createBox(`${title}\n\n${message}`, {
+      borderStyle: 'bold',
+      padding: 1,
+      margin: 1,
+      borderColor: 'yellow',
+      textAlignment: 'center',
+    });
+    console.log(box);
   }
 
   /**
    * Display check warning.
    */
   static checkWarning() {
-    console.log("⚠️  You are in check!\n");
+    console.log(COLORS.checkWarning("⚠️  You are in check!") + "\n");
   }
 
   /**
    * Display goodbye message.
    */
   static goodbye() {
-    console.log("\n👋 Thanks for playing!");
+    console.log("\n" + COLORS.primary("👋 Thanks for playing!"));
   }
 
   /**
@@ -82,7 +221,14 @@ export class OutputFormatter {
    * @param {string} message - Error message to display
    */
   static error(message) {
-    console.error(`\n❌ Fatal error: ${message}`);
+    const box = this.createBox(COLORS.error(`❌ Fatal Error\n\n${message}`), {
+      borderStyle: 'double',
+      padding: 1,
+      margin: 1,
+      borderColor: 'red',
+      textAlignment: 'center',
+    });
+    console.error(box);
   }
 
   /**
@@ -90,7 +236,7 @@ export class OutputFormatter {
    * @param {string} errorMessage - Error message
    */
   static suggestionWarning(errorMessage) {
-    console.error(`⚠️  Failed to get move suggestion: ${errorMessage}`);
+    console.error(COLORS.warning(`⚠️  Failed to get move suggestion: ${errorMessage}`));
   }
 
   /**
@@ -130,10 +276,10 @@ export class OutputFormatter {
     };
 
     const board = game.board();
-    let output = '  a b c d e f g h\n';
+    let output = COLORS.coordinates('  a b c d e f g h') + '\n';
     
     for (let rank = 7; rank >= 0; rank--) {
-      output += `${rank + 1} `;
+      output += COLORS.coordinates(`${rank + 1} `);
       
       for (let file = 0; file < 8; file++) {
         const square = board[rank][file];
@@ -143,16 +289,18 @@ export class OutputFormatter {
         if (square) {
           const notation = square.color === 'w' ? square.type.toUpperCase() : square.type.toLowerCase();
           const symbol = PIECE_SYMBOLS[notation] || '?';
-          output += isHighlighted ? `[${symbol}]` : `${symbol} `;
+          const coloredSymbol = square.color === 'w' ? COLORS.whitePiece(symbol) : COLORS.blackPiece(symbol);
+          output += isHighlighted ? chalk.bgYellow(coloredSymbol) + ' ' : coloredSymbol + ' ';
         } else {
-          output += isHighlighted ? '[·]' : '· ';
+          const dot = '·';
+          output += isHighlighted ? chalk.bgYellow(dot) + ' ' : COLORS.dim(dot) + ' ';
         }
       }
       
-      output += `${rank + 1}\n`;
+      output += COLORS.coordinates(`${rank + 1}`) + '\n';
     }
     
-    output += '  a b c d e f g h\n';
+    output += COLORS.coordinates('  a b c d e f g h') + '\n';
     return output;
   }
 
@@ -161,7 +309,7 @@ export class OutputFormatter {
    * @param {GameHistory} history - Game history object
    */
   static displayHistory(history) {
-    console.log('\n' + history.getFormattedHistory());
+    console.log('\n' + COLORS.info(history.getFormattedHistory()));
   }
 
   /**
@@ -169,7 +317,8 @@ export class OutputFormatter {
    * @param {Object} analysis - Analysis object from PositionAnalyzer
    */
   static displayAnalysis(analysis) {
-    console.log(`\n📊 Evaluation: ${analysis.formattedEval} (${analysis.assessment})`);
+    const evalColor = analysis.score > 0 ? COLORS.success : analysis.score < 0 ? COLORS.error : COLORS.info;
+    console.log(`\n${COLORS.info('📊 Evaluation:')} ${evalColor(analysis.formattedEval)} ${COLORS.dim('(' + analysis.assessment + ')')}`);
   }
 
   /**
@@ -181,11 +330,51 @@ export class OutputFormatter {
       return;
     }
 
-    console.log('\n🎯 Top Moves:');
+    console.log('\n' + COLORS.info('🎯 Top Moves:'));
+    
+    // Prepare table data
+    const data = [
+      [chalk.bold('Rank'), chalk.bold('Move'), chalk.bold('Evaluation'), chalk.bold('Notes')]
+    ];
+    
     for (const move of topMoves) {
-      const explanation = move.explanation ? ` - ${move.explanation}` : '';
-      console.log(`  ${move.rank}. ${move.move} (${move.formattedEval})${explanation}`);
+      const rank = COLORS.dim(move.rank.toString());
+      const moveText = COLORS.highlight(move.move);
+      const evalColor = move.score > 0 ? COLORS.success : move.score < 0 ? COLORS.error : COLORS.info;
+      const evaluation = evalColor(move.formattedEval);
+      const notes = move.explanation ? COLORS.dim(move.explanation) : '';
+      
+      data.push([rank, moveText, evaluation, notes]);
     }
+    
+    // Configure table
+    const config = {
+      border: {
+        topBody: '─',
+        topJoin: '┬',
+        topLeft: '┌',
+        topRight: '┐',
+        bottomBody: '─',
+        bottomJoin: '┴',
+        bottomLeft: '└',
+        bottomRight: '┘',
+        bodyLeft: '│',
+        bodyRight: '│',
+        bodyJoin: '│',
+        joinBody: '─',
+        joinLeft: '├',
+        joinRight: '┤',
+        joinJoin: '┼'
+      },
+      columns: {
+        0: { alignment: 'center', width: 6 },
+        1: { alignment: 'left', width: 10 },
+        2: { alignment: 'center', width: 14 },
+        3: { alignment: 'left', width: 30 }
+      }
+    };
+    
+    console.log(table(data, config));
   }
 
   /**
@@ -194,7 +383,10 @@ export class OutputFormatter {
    * @param {Array} topMoves - Array of top moves
    */
   static displayFullAnalysis(analysis, topMoves) {
+    // Display evaluation
     this.displayAnalysis(analysis);
+    
+    // Display top moves in table format
     if (topMoves && topMoves.length > 0) {
       this.displayTopMoves(topMoves);
     }
@@ -205,7 +397,7 @@ export class OutputFormatter {
    * @param {number} movesUndone - Number of moves undone
    */
   static undoConfirmation(movesUndone = 1) {
-    console.log(`\n↩️  Undone ${movesUndone} move${movesUndone > 1 ? 's' : ''}.`);
+    console.log('\n' + COLORS.info(`↩️  Undone ${movesUndone} move${movesUndone > 1 ? 's' : ''}.`));
   }
 
   /**
@@ -213,7 +405,7 @@ export class OutputFormatter {
    * @param {number} movesRedone - Number of moves redone
    */
   static redoConfirmation(movesRedone = 1) {
-    console.log(`\n↪️  Redone ${movesRedone} move${movesRedone > 1 ? 's' : ''}.`);
+    console.log('\n' + COLORS.info(`↪️  Redone ${movesRedone} move${movesRedone > 1 ? 's' : ''}.`));
   }
 
   /**
@@ -221,7 +413,15 @@ export class OutputFormatter {
    * @param {string} helpText - Help text to display
    */
   static displayHelp(helpText) {
-    console.log(helpText);
+    const box = this.createBox(helpText, {
+      borderStyle: 'round',
+      padding: 1,
+      margin: 1,
+      borderColor: 'blue',
+      title: 'Help',
+      titleAlignment: 'center',
+    });
+    console.log(box);
   }
 
   /**
@@ -229,7 +429,7 @@ export class OutputFormatter {
    * @param {string} message - Warning message
    */
   static warning(message) {
-    console.log(`⚠️  ${message}`);
+    console.log(COLORS.warning(`⚠️  ${message}`));
   }
 
   /**
@@ -237,13 +437,21 @@ export class OutputFormatter {
    * @param {string} message - Info message
    */
   static info(message) {
-    console.log(`ℹ️  ${message}`);
+    console.log(COLORS.info(`ℹ️  ${message}`));
   }
 
   /**
    * Display analyzing message.
    */
   static analyzing() {
-    console.log('\n🔍 Analyzing position...');
+    console.log(); // Empty line before spinner
+    this.startSpinner('Analyzing position...');
+  }
+
+  /**
+   * Display analysis complete message.
+   */
+  static analysisComplete() {
+    this.succeedSpinner('Analysis complete!');
   }
 }

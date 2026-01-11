@@ -1,4 +1,5 @@
 import readline from "readline";
+import chalk from "chalk";
 import { CommandParser } from "./CommandParser.js";
 
 /**
@@ -11,6 +12,13 @@ export class InputHandler {
       input: process.stdin,
       output: process.stdout,
     });
+
+    this.closed = false;
+    
+    // Handle readline close event
+    this.rl.on('close', () => {
+      this.closed = true;
+    });
   }
 
   /**
@@ -19,7 +27,14 @@ export class InputHandler {
    * @returns {Promise<string>} User's input
    */
   async ask(question) {
-    return new Promise((resolve) => this.rl.question(question, resolve));
+    if (this.closed) {
+      throw new Error('readline was closed');
+    }
+    return new Promise((resolve, reject) => {
+      this.rl.question(chalk.cyan(question), (answer) => {
+        resolve(answer);
+      });
+    });
   }
 
   /**

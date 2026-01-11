@@ -1,3 +1,6 @@
+import { table } from 'table';
+import chalk from 'chalk';
+
 /**
  * Tracks game move history and provides undo/redo functionality.
  * Stores moves with their corresponding FEN positions for navigation.
@@ -106,18 +109,50 @@ export class GameHistory {
       return 'No moves yet.';
     }
     
-    let output = 'Move History:\n';
+    // Prepare table data
+    const data = [
+      [chalk.bold('Move #'), chalk.bold('White'), chalk.bold('Black')]
+    ];
     
     for (const entry of history) {
-      const whiteMarker = entry.isCurrentWhite ? '>' : ' ';
-      const blackMarker = entry.isCurrentBlack ? '>' : ' ';
-      const whitePart = entry.white ? `${whiteMarker}${entry.white}` : '';
-      const blackPart = entry.black ? ` ${blackMarker}${entry.black}` : '';
+      const moveNum = chalk.dim(entry.number.toString());
+      const whiteMove = entry.white 
+        ? (entry.isCurrentWhite ? chalk.cyan.bold('► ' + entry.white) : entry.white)
+        : '';
+      const blackMove = entry.black 
+        ? (entry.isCurrentBlack ? chalk.cyan.bold('► ' + entry.black) : entry.black)
+        : '';
       
-      output += `${entry.number}. ${whitePart}${blackPart}\n`;
+      data.push([moveNum, whiteMove, blackMove]);
     }
     
-    return output;
+    // Configure table
+    const config = {
+      border: {
+        topBody: '─',
+        topJoin: '┬',
+        topLeft: '┌',
+        topRight: '┐',
+        bottomBody: '─',
+        bottomJoin: '┴',
+        bottomLeft: '└',
+        bottomRight: '┘',
+        bodyLeft: '│',
+        bodyRight: '│',
+        bodyJoin: '│',
+        joinBody: '─',
+        joinLeft: '├',
+        joinRight: '┤',
+        joinJoin: '┼'
+      },
+      columns: {
+        0: { alignment: 'right', width: 8 },
+        1: { alignment: 'left', width: 12 },
+        2: { alignment: 'left', width: 12 }
+      }
+    };
+    
+    return 'Move History:\n' + table(data, config);
   }
 
   /**

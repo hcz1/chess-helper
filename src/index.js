@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { StockfishEngine } from "./engine/StockfishEngine.js";
 import { GameManager } from "./game/GameManager.js";
 import { MoveValidator } from "./game/MoveValidator.js";
@@ -5,15 +7,18 @@ import { InputHandler } from "./ui/InputHandler.js";
 import { OutputFormatter } from "./ui/OutputFormatter.js";
 import { CommandParser } from "./ui/CommandParser.js";
 import { PositionAnalyzer } from "./analysis/PositionAnalyzer.js";
+import { CommandLineParser } from "./cli/CommandLineParser.js";
+import { ConfigManager } from "./config/ConfigManager.js";
 
 /**
  * Handle special commands during gameplay.
  * @param {Object} command - Parsed command object
  * @param {GameManager} game - Game manager instance
  * @param {StockfishEngine} engine - Chess engine instance
+ * @param {ConfigManager} config - Config manager instance
  * @returns {Promise<boolean>} True if should continue game, false if should exit
  */
-async function handleCommand(command, game, engine) {
+async function handleCommand(command, game, engine, config) {
   switch (command.name) {
     case 'board':
       OutputFormatter.displayBoard(game, game.getLastMove());
@@ -47,10 +52,16 @@ async function handleCommand(command, game, engine) {
       try {
         OutputFormatter.analyzing();
         const topMoves = await PositionAnalyzer.getTopMoves(engine, game.getFEN(), 3);
+        OutputFormatter.analysisComplete();
         OutputFormatter.displayTopMoves(topMoves);
       } catch (error) {
+        OutputFormatter.stopSpinner();
         OutputFormatter.warning(`Analysis failed: ${error.message}`);
       }
+      break;
+    
+    case 'config':
+      OutputFormatter.info(config.getFormattedConfig());
       break;
     
     case 'help':
@@ -72,8 +83,10 @@ async function handleCommand(command, game, engine) {
  * @param {GameManager} game - Game manager instance
  * @param {StockfishEngine} engine - Chess engine instance
  * @param {InputHandler} input - Input handler instance
+ * @param {ConfigManager} config - Config manager instance
+ * @param {Object} appConfig - Application configuration
  */
-async function gameLoop(game, engine, input) {
+async function gameLoop(game, engine, input, config, appConfig) {
   // Display initial board
   OutputFormatter.displayBoard(game, null);
   
@@ -81,11 +94,13 @@ async function gameLoop(game, engine, input) {
     if (game.isPlayerTurn()) {
       // Player's turn - get suggestion and move
       let suggestedMove;
-      try {
-        suggestedMove = await engine.getBestMove(game.getFEN());
-      } catch (error) {
-        OutputFormatter.suggestionWarning(error.message);
-        suggestedMove = null;
+      if (appConfig.display.showHints) {
+        try {
+          suggestedMove = await engine.getBestMove(game.getFEN());
+        } catch (error) {
+          OutputFormatter.suggestionWarning(error.message);
+          suggestedMove = null;
+        }
       }
 
       const prompt = suggestedMove 
@@ -97,7 +112,7 @@ async function gameLoop(game, engine, input) {
       // Check for commands
       if (input.isCommand(myMove)) {
         const command = input.parseCommand(myMove);
-        const shouldContinue = await handleCommand(command, game, engine);
+        const shouldContinue = await handleCommand(command, game, engine, config);
         if (!shouldContinue) {
           OutputFormatter.goodbye();
           return;
@@ -132,7 +147,7 @@ async function gameLoop(game, engine, input) {
       // Check for commands (opponent can also use commands)
       if (input.isCommand(opponentMove)) {
         const command = input.parseCommand(opponentMove);
-        const shouldContinue = await handleCommand(command, game, engine);
+        const shouldContinue = await handleCommand(command, game, engine, config);
         if (!shouldContinue) {
           OutputFormatter.goodbye();
           return;
@@ -185,8 +200,65 @@ function cleanup(engine, input) {
  * Main application entry point.
  */
 async function main() {
+  // Parse command-line arguments
+  const cliParser = new CommandLineParser();
+  const { options, commands } = cliParser.parse();
+
+  // Initialize configuration manager
+  const configManager = new ConfigManager();
+  const appConfig = configManager.mergeWithCliOptions(options);
+
+  // Handle config commands
+  if (commands.config) {
+    if (commands.config.action === 'show') {
+      console.log(configManager.getFormattedConfig());
+    } else if (commands.config.action === 'set') {
+      try {
+        configManager.set(commands.config.key, commands.config.value);
+        console.log(`✓ Set ${commands.config.key} = ${commands.config.value}`);
+      } catch (error) {
+        console.error(`✗ Error: ${error.message}`);
+        process.exit(1);
+      }
+    } else if (commands.config.action === 'reset') {
+      configManager.reset();
+      console.log('✓ Configuration reset to defaults');
+    }
+    return;
+  }
+
+  // Handle analyze command
+  if (commands.analyze) {
+    const engine = new StockfishEngine();
+    try {
+      OutputFormatter.welcome();
+      OutputFormatter.initializing();
+      await engine.initialize();
+      await engine.waitForReady();
+      OutputFormatter.engineReady();
+
+      OutputFormatter.analyzing();
+      const topMoves = await PositionAnalyzer.getTopMoves(
+        engine,
+        commands.analyze.fen,
+        commands.analyze.moves || 5
+      );
+      OutputFormatter.analysisComplete();
+      OutputFormatter.displayTopMoves(topMoves);
+
+      engine.terminate();
+    } catch (error) {
+      OutputFormatter.stopSpinner();
+      OutputFormatter.error(error.message);
+      engine.terminate();
+      process.exit(1);
+    }
+    return;
+  }
+
+  // Normal game mode
   const engine = new StockfishEngine();
-  const input = new InputHandler();
+  let input = null;
 
   try {
     // Display welcome message
@@ -198,19 +270,37 @@ async function main() {
     await engine.waitForReady();
     OutputFormatter.engineReady();
 
-    // Get player color
-    const color = await input.getPlayerColor();
+    // Create input handler AFTER spinner is done
+    input = new InputHandler();
+
+    // Get player color (from CLI or prompt)
+    let color = appConfig.game.defaultColor;
+    if (!color) {
+      color = await input.getPlayerColor();
+    }
+    
     const game = new GameManager(color);
+
+    // Load FEN if provided
+    if (appConfig.game.startFen) {
+      try {
+        game.loadFEN(appConfig.game.startFen);
+        OutputFormatter.info(`Loaded position from FEN`);
+      } catch (error) {
+        OutputFormatter.warning(`Failed to load FEN: ${error.message}`);
+      }
+    }
 
     // Display game start message
     OutputFormatter.gameStart(game.getPlayerColorName());
 
     // Run game loop
-    await gameLoop(game, engine, input);
+    await gameLoop(game, engine, input, configManager, appConfig);
 
     // Clean up
     cleanup(engine, input);
   } catch (error) {
+    OutputFormatter.stopSpinner();
     OutputFormatter.error(error.message);
     cleanup(engine, input);
     process.exit(1);

@@ -19,6 +19,7 @@ export class CommandParser {
     'a': 'analyze',
     'help': 'help',
     '?': 'help',
+    'config': 'config',
     'quit': 'quit',
     'q': 'quit'
   };
@@ -73,6 +74,7 @@ Available Commands:
   undo, u        - Undo the last move (both sides)
   redo, r        - Redo a previously undone move
   analyze, a     - Deep analysis of current position
+  config         - Show current configuration
   help, ?        - Show this help message
   quit, q        - Exit the game
 
@@ -95,6 +97,7 @@ Move Input:
       'undo': 'Undo the last move',
       'redo': 'Redo a previously undone move',
       'analyze': 'Analyze the current position',
+      'config': 'Show current configuration',
       'help': 'Show available commands',
       'quit': 'Exit the game'
     };

@@ -4,6 +4,9 @@
   "description": "A command-line chess assistant powered by Stockfish that helps analyze positions and suggests the best moves during your games",
   "main": "src/index.js",
   "type": "module",
+  "bin": {
+    "chess-helper": "./src/index.js"
+  },
   "scripts": {
     "start": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -19,8 +22,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "boxen": "^8.0.1",
+    "chalk": "^5.6.2",
     "chess.js": "^1.4.0",
+    "commander": "^14.0.2",
+    "conf": "^15.0.2",
+    "ora": "^9.0.0",
     "readline": "^1.3.0",
-    "stockfish": "^17.1.0"
+    "stockfish": "^17.1.0",
+    "table": "^6.9.0"
   }
 }
