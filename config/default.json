@@ -1,0 +1,17 @@
+{
+  "engine": {
+    "depth": 15,
+    "initTimeout": 10000,
+    "moveTimeout": 30000,
+    "threads": 1,
+    "hashSize": 128
+  },
+  "game": {
+    "showSuggestions": true,
+    "validateMoves": true
+  },
+  "ui": {
+    "showExamples": true,
+    "useEmojis": true
+  }
+}

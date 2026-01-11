@@ -1,15 +1,23 @@
 {
   "name": "chess-helper",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "A command-line chess assistant powered by Stockfish that helps analyze positions and suggests the best moves during your games",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
+    "start": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "chess",
+    "stockfish",
+    "cli",
+    "chess-engine",
+    "move-analysis",
+    "chess-assistant"
+  ],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "chess.js": "^1.4.0",
     "readline": "^1.3.0",
