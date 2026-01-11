@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: refactor-architecture
     content: Refactor into modular architecture with separate classes
-    status: pending
+    status: completed
   - id: add-board-visualization
     content: Implement ASCII board display
     status: pending
