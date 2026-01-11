@@ -21,6 +21,19 @@
   ],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/chess-helper.git"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "files": [
+    "src",
+    "config",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "boxen": "^8.0.1",
     "chalk": "^5.6.2",

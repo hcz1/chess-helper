@@ -26,12 +26,21 @@ A command-line chess assistant powered by Stockfish that helps you analyze posit
 
 ## Installation
 
-### Prerequisites
+### Quick Install (Recommended)
 
-- Node.js 16.x or higher
-- npm or yarn
+Install globally via npm (once published):
 
-### Setup
+```bash
+npm install -g chess-helper
+```
+
+Then run from anywhere:
+
+```bash
+chess-helper
+```
+
+### Install from Source
 
 1. Clone the repository:
 ```bash
@@ -44,10 +53,25 @@ cd chess-helper
 npm install
 ```
 
-3. Run the application:
+3. Link globally (makes `chess-helper` command available everywhere):
 ```bash
-npm start
+npm link
 ```
+
+4. Run from anywhere:
+```bash
+chess-helper
+```
+
+### Run without Installing
+
+```bash
+npm start          # From project directory
+# or
+npx chess-helper   # From anywhere (requires npm package)
+```
+
+For detailed installation instructions and troubleshooting, see [INSTALLATION.md](INSTALLATION.md).
 
 ## Usage
 
