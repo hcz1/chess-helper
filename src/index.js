@@ -52,7 +52,7 @@ async function handleCommand(command, game, engine, config) {
       try {
         OutputFormatter.analyzing();
         const topMoves = await PositionAnalyzer.getTopMoves(engine, game.getFEN(), 3);
-        OutputFormatter.analysisComplete();
+        await OutputFormatter.analysisComplete();
         OutputFormatter.displayTopMoves(topMoves);
       } catch (error) {
         OutputFormatter.stopSpinner();

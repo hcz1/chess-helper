@@ -57,7 +57,9 @@ export class OutputFormatter {
     this.spinner = ora({
       text: text,
       color: 'cyan',
-      spinner: 'dots'
+      spinner: 'dots',
+      discardStdin: false,  // Don't discard stdin to preserve readline
+      hideCursor: true
     }).start();
     return this.spinner;
   }
@@ -80,6 +82,8 @@ export class OutputFormatter {
     if (this.spinner) {
       this.spinner.succeed(text);
       this.spinner = null;
+      // Small delay to let terminal settle after spinner
+      return new Promise(resolve => setTimeout(resolve, 10));
     }
   }
 
@@ -271,19 +275,22 @@ export class OutputFormatter {
    */
   static renderSimpleBoard(game, lastMove, showInfo) {
     const PIECE_SYMBOLS = {
-      'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
-      'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
+      'K': '♚', 'Q': '♛', 'R': '♜', 'B': '♝', 'N': '♞', 'P': '♟',  // White pieces (uppercase)
+      'k': '♔', 'q': '♕', 'r': '♖', 'b': '♗', 'n': '♘', 'p': '♙'   // Black pieces (lowercase)
     };
 
     const board = game.board();
     let output = COLORS.coordinates('  a b c d e f g h') + '\n';
     
+    // Chess.js board array: board[0] = rank 8, board[7] = rank 1
     for (let rank = 7; rank >= 0; rank--) {
-      output += COLORS.coordinates(`${rank + 1} `);
+      const displayRank = rank + 1;
+      const boardIndex = 7 - rank; // Invert: rank 8 (display) = board[0], rank 1 (display) = board[7]
+      output += COLORS.coordinates(`${displayRank} `);
       
       for (let file = 0; file < 8; file++) {
-        const square = board[rank][file];
-        const squareName = 'abcdefgh'[file] + (rank + 1);
+        const square = board[boardIndex][file];
+        const squareName = 'abcdefgh'[file] + displayRank;
         const isHighlighted = lastMove && (squareName === lastMove.from || squareName === lastMove.to);
         
         if (square) {
@@ -297,7 +304,7 @@ export class OutputFormatter {
         }
       }
       
-      output += COLORS.coordinates(`${rank + 1}`) + '\n';
+      output += COLORS.coordinates(`${displayRank}`) + '\n';
     }
     
     output += COLORS.coordinates('  a b c d e f g h') + '\n';

@@ -7,10 +7,11 @@ import chalk from 'chalk';
 export class BoardRenderer {
   /**
    * Map of chess.js piece notation to Unicode symbols.
+   * Uppercase = white pieces, Lowercase = black pieces
    */
   static PIECE_SYMBOLS = {
-    'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
-    'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
+    'K': '♚', 'Q': '♛', 'R': '♜', 'B': '♝', 'N': '♞', 'P': '♟',  // White pieces (uppercase)
+    'k': '♔', 'q': '♕', 'r': '♖', 'b': '♗', 'n': '♘', 'p': '♙'   // Black pieces (lowercase)
   };
 
   /**
@@ -34,12 +35,15 @@ export class BoardRenderer {
     output += chalk.dim('  a b c d e f g h') + '\n';
     
     // Render each rank (8 to 1)
+    // Chess.js board array: board[0] = rank 8, board[7] = rank 1
     for (let rank = 7; rank >= 0; rank--) {
-      output += chalk.dim(`${rank + 1} `);
+      const displayRank = rank + 1;
+      const boardIndex = 7 - rank; // Invert: rank 8 (display) = board[0], rank 1 (display) = board[7]
+      output += chalk.dim(`${displayRank} `);
       
       for (let file = 0; file < 8; file++) {
-        const square = board[rank][file];
-        const squareName = this.getSquareName(file, rank);
+        const square = board[boardIndex][file];
+        const squareName = this.getSquareName(file, displayRank);
         const isHighlighted = this.isSquareHighlighted(squareName, lastMove);
         
         if (square) {
@@ -52,7 +56,7 @@ export class BoardRenderer {
         }
       }
       
-      output += chalk.dim(`${rank + 1}`) + '\n';
+      output += chalk.dim(`${displayRank}`) + '\n';
     }
     
     // Column labels again
