@@ -187,97 +187,36 @@ You (white): Nf3
 
 ## Architecture
 
-The application follows a modular architecture with clear separation of concerns:
+The application follows a modular architecture with clear separation of concerns. For detailed architecture documentation, see [docs/development/ARCHITECTURE.md](docs/development/ARCHITECTURE.md).
+
+### Quick Overview
 
 ```
 chess-helper/
 ├── src/
-│   ├── analysis/
-│   │   └── PositionAnalyzer.js     # Position analysis and evaluation
-│   ├── engine/
-│   │   ├── StockfishEngine.js      # Engine wrapper and UCI communication
-│   │   └── EngineConfig.js         # Engine configuration constants
-│   ├── game/
-│   │   ├── GameManager.js          # Game state management
-│   │   ├── GameHistory.js          # Move history and undo/redo
-│   │   └── MoveValidator.js        # Move validation and formatting
-│   ├── ui/
-│   │   ├── BoardRenderer.js        # ASCII board visualization
-│   │   ├── CommandParser.js        # Command parsing and handling
-│   │   ├── InputHandler.js         # User input handling
-│   │   └── OutputFormatter.js      # Console output formatting
-│   └── index.js                     # Main entry point
-├── config/
-│   └── default.json                # Configuration settings
-└── package.json
+│   ├── analysis/          # Position analysis
+│   ├── cli/               # CLI argument parsing
+│   ├── config/            # Configuration management
+│   ├── engine/            # Chess engine integration
+│   ├── game/              # Game logic and state
+│   ├── ui/                # User interface components
+│   └── index.js           # Main entry point
+├── config/                # Configuration files
+└── docs/                  # Documentation
 ```
 
-### Components
+### Key Components
 
-#### PositionAnalyzer (NEW in Phase 3)
-Analyzes chess positions:
-- Evaluation score extraction
-- Multiple move alternatives
-- Position assessment (winning/equal/losing)
-- Move explanations
+- **PositionAnalyzer** - Position analysis and evaluation
+- **BoardRenderer** - ASCII board visualization
+- **GameHistory** - Move history tracking with undo/redo
+- **CommandParser** - Command system for game navigation
+- **StockfishEngine** - Chess engine wrapper and UCI communication
+- **GameManager** - Game state management
+- **InputHandler** - User input processing
+- **OutputFormatter** - Console output formatting
 
-#### BoardRenderer (NEW in Phase 3)
-Visualizes the chess board:
-- Unicode piece rendering
-- Last move highlighting
-- Captured pieces display
-- Material advantage calculation
-
-#### GameHistory (NEW in Phase 3)
-Tracks game history:
-- Move recording with FEN positions
-- Undo/redo functionality
-- PGN export
-- Formatted history display
-
-#### CommandParser (NEW in Phase 3)
-Parses user commands:
-- Command recognition and validation
-- Alias support (b for board, h for history, etc.)
-- Help system
-
-#### StockfishEngine
-Manages the Stockfish chess engine lifecycle:
-- WASM module initialization
-- UCI protocol communication
-- Move analysis and suggestions
-- Multi-move analysis with MultiPV
-- Evaluation score extraction
-
-#### GameManager
-Handles game state and operations:
-- Chess.js wrapper for game logic
-- Turn tracking and validation
-- Game-over detection
-- Position management (FEN)
-- History integration
-
-#### MoveValidator
-Validates and formats chess moves:
-- Multiple move format support
-- Move validation
-- Error message generation
-
-#### InputHandler
-Manages user input:
-- Readline interface
-- Input prompting and collection
-- Command parsing integration
-- Auto-confirm for suggested moves
-
-#### OutputFormatter
-Formats console output:
-- Consistent messaging
-- Board display
-- History display
-- Analysis display
-- Game status display
-- Error formatting
+See [ARCHITECTURE.md](docs/development/ARCHITECTURE.md) for complete component documentation.
 
 ## Configuration
 
@@ -394,6 +333,8 @@ The modular architecture makes it easy to extend:
 
 ## Version History
 
+For detailed version history, see [docs/history/CHANGELOG.md](docs/history/CHANGELOG.md).
+
 - **v3.0.0** (Phase 3): Board visualization, move history, undo/redo, position analysis, command system
 - **v2.0.0** (Phase 2): Modular architecture refactor
 - **v1.0.0** (Phase 1): Core functionality with engine integration
@@ -430,12 +371,29 @@ ISC
 - chess.js for the game logic library
 - Node.js community for WASM support
 
+## Documentation
+
+- **[README.md](README.md)** - This file (user guide)
+- **[INSTALLATION.md](INSTALLATION.md)** - Installation instructions
+- **[EXAMPLES.md](EXAMPLES.md)** - Usage examples and workflows
+- **[PUBLISHING.md](PUBLISHING.md)** - Publishing guide
+- **[docs/README.md](docs/README.md)** - Complete documentation index
+
+### Developer Documentation
+- **[Architecture](docs/development/ARCHITECTURE.md)** - System architecture and design
+- **[CLI Setup](docs/development/CLI_SETUP.md)** - CLI setup guide
+- **[Testing](docs/development/TEST_INSTRUCTIONS.md)** - Testing instructions
+
+### Project History
+- **[Changelog](docs/history/CHANGELOG.md)** - Version history
+- **[Phase Reports](docs/history/)** - Phase 1, 2, and 3 completion reports
+
 ## Support
 
 For issues, questions, or suggestions:
 - Open an issue on GitHub
 - Check the troubleshooting section above
-- Review the architecture documentation
+- Review the [architecture documentation](docs/development/ARCHITECTURE.md)
 
 ---
 
