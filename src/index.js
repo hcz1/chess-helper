@@ -79,6 +79,27 @@ async function handleCommand(command, game, engine, config) {
 }
 
 /**
+ * Log the engine evaluation for the current position to the console.
+ * Respects the display.showEvaluation flag to avoid unwanted analysis.
+ * @param {StockfishEngine} engine - Stockfish engine instance
+ * @param {GameManager} game - Game manager instance
+ * @param {Object} appConfig - Application configuration
+ */
+async function logEvaluation(engine, game, appConfig) {
+  if (!appConfig.display.showEvaluation) {
+    return;
+  }
+
+  try {
+    const depth = appConfig?.engine?.depth;
+    const analysis = await engine.getAnalysis(game.getFEN(), 1, depth);
+    OutputFormatter.displayMoveEvaluation(analysis.evaluation, analysis.depth);
+  } catch (error) {
+    OutputFormatter.warning(`Evaluation unavailable: ${error.message}`);
+  }
+}
+
+/**
  * Main game loop - handles turn-by-turn gameplay.
  * @param {GameManager} game - Game manager instance
  * @param {StockfishEngine} engine - Chess engine instance
@@ -132,8 +153,14 @@ async function gameLoop(game, engine, input, config, appConfig) {
       // Display board after player's move
       OutputFormatter.displayBoard(game, game.getLastMove());
 
+      const gameOverAfterPlayerMove = game.isGameOver();
+
+      if (!gameOverAfterPlayerMove) {
+        await logEvaluation(engine, game, appConfig);
+      }
+
       // Check if game is over after player's move
-      if (game.isGameOver()) {
+      if (gameOverAfterPlayerMove) {
         const gameOverInfo = game.getGameOverReason();
         OutputFormatter.gameOver(gameOverInfo);
         return;
@@ -167,8 +194,14 @@ async function gameLoop(game, engine, input, config, appConfig) {
       // Display board after opponent's move
       OutputFormatter.displayBoard(game, game.getLastMove());
 
+      const gameOverAfterOpponentMove = game.isGameOver();
+
+      if (!gameOverAfterOpponentMove) {
+        await logEvaluation(engine, game, appConfig);
+      }
+
       // Check if game is over after opponent's move
-      if (game.isGameOver()) {
+      if (gameOverAfterOpponentMove) {
         const gameOverInfo = game.getGameOverReason();
         OutputFormatter.gameOver(gameOverInfo);
         return;

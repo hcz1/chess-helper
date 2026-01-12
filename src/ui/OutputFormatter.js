@@ -1,7 +1,7 @@
-import chalk from 'chalk';
-import boxen from 'boxen';
-import { table } from 'table';
-import ora from 'ora';
+import chalk from "chalk";
+import boxen from "boxen";
+import { table } from "table";
+import ora from "ora";
 
 /**
  * Color scheme for consistent styling throughout the application.
@@ -42,8 +42,8 @@ export class OutputFormatter {
     const defaultOptions = {
       padding: 1,
       margin: 0,
-      borderStyle: 'round',
-      borderColor: 'cyan',
+      borderStyle: "round",
+      borderColor: "cyan",
     };
     return boxen(content, { ...defaultOptions, ...options });
   }
@@ -56,10 +56,10 @@ export class OutputFormatter {
   static startSpinner(text) {
     this.spinner = ora({
       text: text,
-      color: 'cyan',
-      spinner: 'dots',
-      discardStdin: false,  // Don't discard stdin to preserve readline
-      hideCursor: true
+      color: "cyan",
+      spinner: "dots",
+      discardStdin: false, // Don't discard stdin to preserve readline
+      hideCursor: true,
     }).start();
     return this.spinner;
   }
@@ -83,7 +83,7 @@ export class OutputFormatter {
       this.spinner.succeed(text);
       this.spinner = null;
       // Small delay to let terminal settle after spinner
-      return new Promise(resolve => setTimeout(resolve, 10));
+      return new Promise((resolve) => setTimeout(resolve, 10));
     }
   }
 
@@ -133,11 +133,11 @@ export class OutputFormatter {
     const welcomeText = COLORS.primary.bold("♟  Chess Move Helper");
     const subtitle = chalk.dim("Powered by Stockfish");
     const box = this.createBox(`${welcomeText}\n${subtitle}`, {
-      borderStyle: 'double',
+      borderStyle: "double",
       padding: 1,
       margin: 1,
-      borderColor: 'cyan',
-      textAlignment: 'center',
+      borderColor: "cyan",
+      textAlignment: "center",
     });
     console.log(box);
   }
@@ -162,8 +162,15 @@ export class OutputFormatter {
    * @param {string} playerColor - Player's color name ('white' or 'black')
    */
   static gameStart(playerColor) {
-    const coloredPlayerColor = playerColor === 'white' ? COLORS.whitePiece(playerColor) : COLORS.blackPiece(playerColor);
-    console.log(`\nYou are playing as ${coloredPlayerColor}. Enter ${COLORS.command("'quit'")} to exit.\n`);
+    const coloredPlayerColor =
+      playerColor === "white"
+        ? COLORS.whitePiece(playerColor)
+        : COLORS.blackPiece(playerColor);
+    console.log(
+      `\nYou are playing as ${coloredPlayerColor}. Enter ${COLORS.command(
+        "'quit'"
+      )} to exit.\n`
+    );
   }
 
   /**
@@ -197,11 +204,11 @@ export class OutputFormatter {
     const title = COLORS.primary.bold("🎮 Game Over!");
     const message = COLORS.info(gameOverInfo.message);
     const box = this.createBox(`${title}\n\n${message}`, {
-      borderStyle: 'bold',
+      borderStyle: "bold",
       padding: 1,
       margin: 1,
-      borderColor: 'yellow',
-      textAlignment: 'center',
+      borderColor: "yellow",
+      textAlignment: "center",
     });
     console.log(box);
   }
@@ -226,11 +233,11 @@ export class OutputFormatter {
    */
   static error(message) {
     const box = this.createBox(COLORS.error(`❌ Fatal Error\n\n${message}`), {
-      borderStyle: 'double',
+      borderStyle: "double",
       padding: 1,
       margin: 1,
-      borderColor: 'red',
-      textAlignment: 'center',
+      borderColor: "red",
+      textAlignment: "center",
     });
     console.error(box);
   }
@@ -240,7 +247,9 @@ export class OutputFormatter {
    * @param {string} errorMessage - Error message
    */
   static suggestionWarning(errorMessage) {
-    console.error(COLORS.warning(`⚠️  Failed to get move suggestion: ${errorMessage}`));
+    console.error(
+      COLORS.warning(`⚠️  Failed to get move suggestion: ${errorMessage}`)
+    );
   }
 
   /**
@@ -259,7 +268,7 @@ export class OutputFormatter {
   static displayBoard(game, lastMove = null, showInfo = true) {
     // Import BoardRenderer dynamically to avoid circular dependencies
     const actualGame = game.getGame ? game.getGame() : game;
-    
+
     // We'll use a simple inline board renderer for now
     // This will be replaced when we integrate BoardRenderer properly
     console.log("\n" + this.renderSimpleBoard(actualGame, lastMove, showInfo));
@@ -275,39 +284,61 @@ export class OutputFormatter {
    */
   static renderSimpleBoard(game, lastMove, showInfo) {
     const PIECE_SYMBOLS = {
-      'K': '♚', 'Q': '♛', 'R': '♜', 'B': '♝', 'N': '♞', 'P': '♟',  // White pieces (uppercase)
-      'k': '♔', 'q': '♕', 'r': '♖', 'b': '♗', 'n': '♘', 'p': '♙'   // Black pieces (lowercase)
+      K: "♚",
+      Q: "♛",
+      R: "♜",
+      B: "♝",
+      N: "♞",
+      P: "♟", // White pieces (uppercase)
+      k: "♔",
+      q: "♕",
+      r: "♖",
+      b: "♗",
+      n: "♘",
+      p: "♙", // Black pieces (lowercase)
     };
 
     const board = game.board();
-    let output = COLORS.coordinates('  a b c d e f g h') + '\n';
-    
+    let output = COLORS.coordinates("  a b c d e f g h") + "\n";
+
     // Chess.js board array: board[0] = rank 8, board[7] = rank 1
     for (let rank = 7; rank >= 0; rank--) {
       const displayRank = rank + 1;
       const boardIndex = 7 - rank; // Invert: rank 8 (display) = board[0], rank 1 (display) = board[7]
       output += COLORS.coordinates(`${displayRank} `);
-      
+
       for (let file = 0; file < 8; file++) {
         const square = board[boardIndex][file];
-        const squareName = 'abcdefgh'[file] + displayRank;
-        const isHighlighted = lastMove && (squareName === lastMove.from || squareName === lastMove.to);
-        
+        const squareName = "abcdefgh"[file] + displayRank;
+        const isHighlighted =
+          lastMove &&
+          (squareName === lastMove.from || squareName === lastMove.to);
+
         if (square) {
-          const notation = square.color === 'w' ? square.type.toUpperCase() : square.type.toLowerCase();
-          const symbol = PIECE_SYMBOLS[notation] || '?';
-          const coloredSymbol = square.color === 'w' ? COLORS.whitePiece(symbol) : COLORS.blackPiece(symbol);
-          output += isHighlighted ? chalk.bgYellow(coloredSymbol) + ' ' : coloredSymbol + ' ';
+          const notation =
+            square.color === "w"
+              ? square.type.toUpperCase()
+              : square.type.toLowerCase();
+          const symbol = PIECE_SYMBOLS[notation] || "?";
+          const coloredSymbol =
+            square.color === "w"
+              ? COLORS.whitePiece(symbol)
+              : COLORS.blackPiece(symbol);
+          output += isHighlighted
+            ? chalk.bgYellow(coloredSymbol) + " "
+            : coloredSymbol + " ";
         } else {
-          const dot = '·';
-          output += isHighlighted ? chalk.bgYellow(dot) + ' ' : COLORS.dim(dot) + ' ';
+          const dot = "·";
+          output += isHighlighted
+            ? chalk.bgYellow(dot) + " "
+            : COLORS.dim(dot) + " ";
         }
       }
-      
-      output += COLORS.coordinates(`${displayRank}`) + '\n';
+
+      output += COLORS.coordinates(`${displayRank}`) + "\n";
     }
-    
-    output += COLORS.coordinates('  a b c d e f g h') + '\n';
+
+    output += COLORS.coordinates("  a b c d e f g h") + "\n";
     return output;
   }
 
@@ -316,7 +347,48 @@ export class OutputFormatter {
    * @param {GameHistory} history - Game history object
    */
   static displayHistory(history) {
-    console.log('\n' + COLORS.info(history.getFormattedHistory()));
+    console.log("\n" + COLORS.info(history.getFormattedHistory()));
+  }
+
+  /**
+   * Format a Stockfish evaluation object into a human-readable string.
+   * Falls back to 0.00 when a score is missing.
+   * @param {{type: string, value: number}|null} score - Evaluation score
+   * @returns {string} Formatted evaluation
+   */
+  static formatEvaluation(score) {
+    if (!score) {
+      return "0.00";
+    }
+
+    if (score.type === "mate") {
+      const mateIn = score.value;
+      return mateIn > 0 ? `Mate in ${mateIn}` : `Mated in ${Math.abs(mateIn)}`;
+    }
+
+    const pawns = score.value / 100;
+    const sign = pawns >= 0 ? "+" : "";
+    return `${sign}${pawns.toFixed(2)}`;
+  }
+
+  /**
+   * Display a concise evaluation line for the current position.
+   * @param {{type: string, value: number}|null} score - Evaluation score
+   * @param {number} depth - Search depth used
+   */
+  static displayMoveEvaluation(score, depth) {
+    const formattedEval = this.formatEvaluation(score);
+    const scoreValue = score ? score.value : 0;
+    const evalColor =
+      scoreValue > 0
+        ? COLORS.success
+        : scoreValue < 0
+        ? COLORS.error
+        : COLORS.info;
+    const depthText = depth ? ` ${COLORS.dim(`(depth ${depth})`)}` : "";
+    console.log(
+      `${COLORS.info("📈 Evaluation:")} ${evalColor(formattedEval)}${depthText}`
+    );
   }
 
   /**
@@ -324,8 +396,17 @@ export class OutputFormatter {
    * @param {Object} analysis - Analysis object from PositionAnalyzer
    */
   static displayAnalysis(analysis) {
-    const evalColor = analysis.score > 0 ? COLORS.success : analysis.score < 0 ? COLORS.error : COLORS.info;
-    console.log(`\n${COLORS.info('📊 Evaluation:')} ${evalColor(analysis.formattedEval)} ${COLORS.dim('(' + analysis.assessment + ')')}`);
+    const evalColor =
+      analysis.score > 0
+        ? COLORS.success
+        : analysis.score < 0
+        ? COLORS.error
+        : COLORS.info;
+    console.log(
+      `\n${COLORS.info("📊 Evaluation:")} ${evalColor(
+        analysis.formattedEval
+      )} ${COLORS.dim("(" + analysis.assessment + ")")}`
+    );
   }
 
   /**
@@ -337,50 +418,60 @@ export class OutputFormatter {
       return;
     }
 
-    console.log('\n' + COLORS.info('🎯 Top Moves:'));
-    
+    console.log("\n" + COLORS.info("🎯 Top Moves:"));
+
     // Prepare table data
     const data = [
-      [chalk.bold('Rank'), chalk.bold('Move'), chalk.bold('Evaluation'), chalk.bold('Notes')]
+      [
+        chalk.bold("Rank"),
+        chalk.bold("Move"),
+        chalk.bold("Evaluation"),
+        chalk.bold("Notes"),
+      ],
     ];
-    
+
     for (const move of topMoves) {
       const rank = COLORS.dim(move.rank.toString());
       const moveText = COLORS.highlight(move.move);
-      const evalColor = move.score > 0 ? COLORS.success : move.score < 0 ? COLORS.error : COLORS.info;
+      const evalColor =
+        move.score > 0
+          ? COLORS.success
+          : move.score < 0
+          ? COLORS.error
+          : COLORS.info;
       const evaluation = evalColor(move.formattedEval);
-      const notes = move.explanation ? COLORS.dim(move.explanation) : '';
-      
+      const notes = move.explanation ? COLORS.dim(move.explanation) : "";
+
       data.push([rank, moveText, evaluation, notes]);
     }
-    
+
     // Configure table
     const config = {
       border: {
-        topBody: '─',
-        topJoin: '┬',
-        topLeft: '┌',
-        topRight: '┐',
-        bottomBody: '─',
-        bottomJoin: '┴',
-        bottomLeft: '└',
-        bottomRight: '┘',
-        bodyLeft: '│',
-        bodyRight: '│',
-        bodyJoin: '│',
-        joinBody: '─',
-        joinLeft: '├',
-        joinRight: '┤',
-        joinJoin: '┼'
+        topBody: "─",
+        topJoin: "┬",
+        topLeft: "┌",
+        topRight: "┐",
+        bottomBody: "─",
+        bottomJoin: "┴",
+        bottomLeft: "└",
+        bottomRight: "┘",
+        bodyLeft: "│",
+        bodyRight: "│",
+        bodyJoin: "│",
+        joinBody: "─",
+        joinLeft: "├",
+        joinRight: "┤",
+        joinJoin: "┼",
       },
       columns: {
-        0: { alignment: 'center', width: 6 },
-        1: { alignment: 'left', width: 10 },
-        2: { alignment: 'center', width: 14 },
-        3: { alignment: 'left', width: 30 }
-      }
+        0: { alignment: "center", width: 6 },
+        1: { alignment: "left", width: 10 },
+        2: { alignment: "center", width: 14 },
+        3: { alignment: "left", width: 30 },
+      },
     };
-    
+
     console.log(table(data, config));
   }
 
@@ -392,7 +483,7 @@ export class OutputFormatter {
   static displayFullAnalysis(analysis, topMoves) {
     // Display evaluation
     this.displayAnalysis(analysis);
-    
+
     // Display top moves in table format
     if (topMoves && topMoves.length > 0) {
       this.displayTopMoves(topMoves);
@@ -404,7 +495,12 @@ export class OutputFormatter {
    * @param {number} movesUndone - Number of moves undone
    */
   static undoConfirmation(movesUndone = 1) {
-    console.log('\n' + COLORS.info(`↩️  Undone ${movesUndone} move${movesUndone > 1 ? 's' : ''}.`));
+    console.log(
+      "\n" +
+        COLORS.info(
+          `↩️  Undone ${movesUndone} move${movesUndone > 1 ? "s" : ""}.`
+        )
+    );
   }
 
   /**
@@ -412,7 +508,12 @@ export class OutputFormatter {
    * @param {number} movesRedone - Number of moves redone
    */
   static redoConfirmation(movesRedone = 1) {
-    console.log('\n' + COLORS.info(`↪️  Redone ${movesRedone} move${movesRedone > 1 ? 's' : ''}.`));
+    console.log(
+      "\n" +
+        COLORS.info(
+          `↪️  Redone ${movesRedone} move${movesRedone > 1 ? "s" : ""}.`
+        )
+    );
   }
 
   /**
@@ -421,12 +522,12 @@ export class OutputFormatter {
    */
   static displayHelp(helpText) {
     const box = this.createBox(helpText, {
-      borderStyle: 'round',
+      borderStyle: "round",
       padding: 1,
       margin: 1,
-      borderColor: 'blue',
-      title: 'Help',
-      titleAlignment: 'center',
+      borderColor: "blue",
+      title: "Help",
+      titleAlignment: "center",
     });
     console.log(box);
   }
@@ -452,13 +553,13 @@ export class OutputFormatter {
    */
   static analyzing() {
     console.log(); // Empty line before spinner
-    this.startSpinner('Analyzing position...');
+    this.startSpinner("Analyzing position...");
   }
 
   /**
    * Display analysis complete message.
    */
   static analysisComplete() {
-    this.succeedSpinner('Analysis complete!');
+    this.succeedSpinner("Analysis complete!");
   }
 }
