@@ -6,20 +6,28 @@
     "threads": 1,
     "hashSize": 128
   },
+  "display": {
+    "colors": true,
+    "unicode": true,
+    "showBoardAfterMove": true,
+    "showMoveHistory": false,
+    "showAnalysis": false,
+    "showCapturedPieces": true,
+    "showMaterialAdvantage": true,
+    "showHints": true,
+    "showEvaluation": true,
+    "theme": "default"
+  },
   "game": {
+    "defaultColor": null,
+    "autoSave": false,
+    "saveDirectory": "./games",
     "showSuggestions": true,
     "validateMoves": true
   },
   "ui": {
     "showExamples": true,
     "useEmojis": true
-  },
-  "display": {
-    "showBoardAfterMove": true,
-    "showMoveHistory": false,
-    "showAnalysis": false,
-    "showCapturedPieces": true,
-    "showMaterialAdvantage": true
   },
   "analysis": {
     "showTopMoves": 3,

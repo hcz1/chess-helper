@@ -1,5 +1,5 @@
 import Conf from 'conf';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -7,29 +7,86 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Default configuration schema.
+ * Load default configuration from config/default.json
+ * Falls back to built-in defaults if file not found.
  */
-const DEFAULT_CONFIG = {
-  engine: {
-    depth: 15,
-    timeout: 5000,
-    threads: 1,
-  },
-  display: {
-    colors: true,
-    unicode: true,
-    showHints: true,
-    showEvaluation: true,
-    showCaptured: true,
-    showMaterial: true,
-    theme: 'default',
-  },
-  game: {
-    defaultColor: null,
-    autoSave: false,
-    saveDirectory: './games',
-  },
-};
+function loadDefaultConfig() {
+  // Path to config/default.json (relative to project root)
+  const configPath = join(__dirname, '../../config/default.json');
+  
+  // Built-in fallback defaults
+  const fallbackDefaults = {
+    engine: {
+      depth: 15,
+      initTimeout: 10000,
+      moveTimeout: 30000,
+      threads: 1,
+      hashSize: 128,
+    },
+    display: {
+      colors: true,
+      unicode: true,
+      showBoardAfterMove: true,
+      showMoveHistory: false,
+      showAnalysis: false,
+      showCapturedPieces: true,
+      showMaterialAdvantage: true,
+      showHints: true,
+      showEvaluation: true,
+      theme: 'default',
+    },
+    game: {
+      defaultColor: null,
+      autoSave: false,
+      saveDirectory: './games',
+      showSuggestions: true,
+      validateMoves: true,
+    },
+    ui: {
+      showExamples: true,
+      useEmojis: true,
+    },
+    analysis: {
+      showTopMoves: 3,
+      analysisDepth: 15,
+      showEvaluation: true,
+    },
+  };
+
+  try {
+    if (existsSync(configPath)) {
+      const fileConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
+      // Deep merge file config with fallback defaults
+      return deepMerge(fallbackDefaults, fileConfig);
+    }
+  } catch (error) {
+    console.warn(`Warning: Could not load config/default.json: ${error.message}`);
+  }
+  
+  return fallbackDefaults;
+}
+
+/**
+ * Deep merge two objects.
+ * @param {Object} target - Target object
+ * @param {Object} source - Source object to merge
+ * @returns {Object} Merged object
+ */
+function deepMerge(target, source) {
+  const result = { ...target };
+  
+  for (const key of Object.keys(source)) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(target[key] || {}, source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  
+  return result;
+}
+
+const DEFAULT_CONFIG = loadDefaultConfig();
 
 /**
  * Manages application configuration using the conf library.
@@ -118,24 +175,33 @@ export class ConfigManager {
     const config = {
       engine: {
         depth: cliOptions.depth ?? this.get('engine.depth'),
-        timeout: this.get('engine.timeout'),
+        initTimeout: this.get('engine.initTimeout'),
+        moveTimeout: this.get('engine.moveTimeout'),
         threads: this.get('engine.threads'),
+        hashSize: this.get('engine.hashSize'),
       },
       display: {
         colors: cliOptions.noColor ? false : this.get('display.colors'),
         unicode: this.get('display.unicode'),
+        showBoardAfterMove: this.get('display.showBoardAfterMove'),
+        showMoveHistory: this.get('display.showMoveHistory'),
+        showAnalysis: this.get('display.showAnalysis'),
+        showCapturedPieces: this.get('display.showCapturedPieces'),
+        showMaterialAdvantage: this.get('display.showMaterialAdvantage'),
         showHints: cliOptions.hints ?? this.get('display.showHints'),
         showEvaluation: this.get('display.showEvaluation'),
-        showCaptured: this.get('display.showCaptured'),
-        showMaterial: this.get('display.showMaterial'),
         theme: this.get('display.theme'),
       },
       game: {
         defaultColor: cliOptions.color ?? this.get('game.defaultColor'),
         autoSave: this.get('game.autoSave'),
         saveDirectory: this.get('game.saveDirectory'),
+        showSuggestions: this.get('game.showSuggestions'),
+        validateMoves: this.get('game.validateMoves'),
         startFen: cliOptions.fen ?? null,
       },
+      ui: this.get('ui'),
+      analysis: this.get('analysis'),
       debug: cliOptions.debug ?? false,
     };
 
@@ -152,19 +218,19 @@ export class ConfigManager {
    */
   validateValue(key, value) {
     // Engine depth validation
-    if (key === 'engine.depth') {
+    if (key === 'engine.depth' || key === 'analysis.analysisDepth') {
       const depth = parseInt(value);
       if (isNaN(depth) || depth < 1 || depth > 30) {
-        throw new Error('Engine depth must be between 1 and 30');
+        throw new Error('Depth must be between 1 and 30');
       }
       return depth;
     }
 
     // Engine timeout validation
-    if (key === 'engine.timeout') {
+    if (key === 'engine.initTimeout' || key === 'engine.moveTimeout') {
       const timeout = parseInt(value);
       if (isNaN(timeout) || timeout < 100) {
-        throw new Error('Engine timeout must be at least 100ms');
+        throw new Error('Timeout must be at least 100ms');
       }
       return timeout;
     }
@@ -178,8 +244,30 @@ export class ConfigManager {
       return threads;
     }
 
-    // Boolean validations
-    if (key.startsWith('display.') || key === 'game.autoSave') {
+    // Engine hash size validation
+    if (key === 'engine.hashSize') {
+      const hashSize = parseInt(value);
+      if (isNaN(hashSize) || hashSize < 1 || hashSize > 4096) {
+        throw new Error('Hash size must be between 1 and 4096 MB');
+      }
+      return hashSize;
+    }
+
+    // Analysis top moves validation
+    if (key === 'analysis.showTopMoves') {
+      const topMoves = parseInt(value);
+      if (isNaN(topMoves) || topMoves < 1 || topMoves > 10) {
+        throw new Error('Show top moves must be between 1 and 10');
+      }
+      return topMoves;
+    }
+
+    // Boolean validations for display, game, ui, and analysis settings
+    const booleanKeys = [
+      'display.', 'ui.', 'analysis.showEvaluation',
+      'game.autoSave', 'game.showSuggestions', 'game.validateMoves'
+    ];
+    if (booleanKeys.some(prefix => key.startsWith(prefix) || key === prefix)) {
       if (typeof value === 'boolean') return value;
       if (value === 'true') return true;
       if (value === 'false') return false;
@@ -208,6 +296,7 @@ export class ConfigManager {
     let output = 'Current Configuration:\n\n';
 
     const formatSection = (title, obj, prefix = '') => {
+      if (!obj) return;
       output += `${title}:\n`;
       for (const [key, value] of Object.entries(obj)) {
         const fullKey = prefix ? `${prefix}.${key}` : key;
@@ -223,8 +312,11 @@ export class ConfigManager {
     formatSection('Engine', config.engine, 'engine');
     formatSection('Display', config.display, 'display');
     formatSection('Game', config.game, 'game');
+    formatSection('UI', config.ui, 'ui');
+    formatSection('Analysis', config.analysis, 'analysis');
 
-    output += `\nConfig file: ${this.getPath()}\n`;
+    output += `\nUser config file: ${this.getPath()}\n`;
+    output += `Default config: config/default.json\n`;
 
     return output;
   }
