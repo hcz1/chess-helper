@@ -7,6 +7,7 @@ import { InputHandler } from "./ui/InputHandler.js";
 import { OutputFormatter } from "./ui/OutputFormatter.js";
 import { CommandParser } from "./ui/CommandParser.js";
 import { PositionAnalyzer } from "./analysis/PositionAnalyzer.js";
+import { MoveExplainer } from "./analysis/MoveExplainer.js";
 import { CommandLineParser } from "./cli/CommandLineParser.js";
 import { ConfigManager } from "./config/ConfigManager.js";
 
@@ -20,38 +21,42 @@ import { ConfigManager } from "./config/ConfigManager.js";
  */
 async function handleCommand(command, game, engine, config) {
   switch (command.name) {
-    case 'board':
+    case "board":
       OutputFormatter.displayBoard(game, game.getLastMove());
       break;
-    
-    case 'history':
+
+    case "history":
       OutputFormatter.displayHistory(game.getHistory());
       break;
-    
-    case 'undo':
+
+    case "undo":
       if (game.canUndo()) {
         game.undo();
         OutputFormatter.undoConfirmation(1);
         OutputFormatter.displayBoard(game, game.getLastMove());
       } else {
-        OutputFormatter.warning('No moves to undo.');
+        OutputFormatter.warning("No moves to undo.");
       }
       break;
-    
-    case 'redo':
+
+    case "redo":
       if (game.canRedo()) {
         game.redo();
         OutputFormatter.redoConfirmation(1);
         OutputFormatter.displayBoard(game, game.getLastMove());
       } else {
-        OutputFormatter.warning('No moves to redo.');
+        OutputFormatter.warning("No moves to redo.");
       }
       break;
-    
-    case 'analyze':
+
+    case "analyze":
       try {
         OutputFormatter.analyzing();
-        const topMoves = await PositionAnalyzer.getTopMoves(engine, game.getFEN(), 3);
+        const topMoves = await PositionAnalyzer.getTopMoves(
+          engine,
+          game.getFEN(),
+          3
+        );
         await OutputFormatter.analysisComplete();
         OutputFormatter.displayTopMoves(topMoves);
       } catch (error) {
@@ -59,22 +64,22 @@ async function handleCommand(command, game, engine, config) {
         OutputFormatter.warning(`Analysis failed: ${error.message}`);
       }
       break;
-    
-    case 'config':
+
+    case "config":
       OutputFormatter.info(config.getFormattedConfig());
       break;
-    
-    case 'help':
+
+    case "help":
       OutputFormatter.displayHelp(CommandParser.getCommandHelp());
       break;
-    
-    case 'quit':
+
+    case "quit":
       return false;
-    
+
     default:
-      OutputFormatter.warning('Unknown command.');
+      OutputFormatter.warning("Unknown command.");
   }
-  
+
   return true;
 }
 
@@ -110,30 +115,50 @@ async function logEvaluation(engine, game, appConfig) {
 async function gameLoop(game, engine, input, config, appConfig) {
   // Display initial board
   OutputFormatter.displayBoard(game, null);
-  
+
   while (!game.isGameOver()) {
     if (game.isPlayerTurn()) {
       // Player's turn - get suggestion and move
       let suggestedMove;
+      let explanation = null;
       if (appConfig.display.showHints) {
         try {
           suggestedMove = await engine.getBestMove(game.getFEN());
+
+          // Get rich explanation for the suggested move
+          explanation = MoveExplainer.explain(suggestedMove, game.getGame());
+
+          // Display the suggestion with explanation
+          if (suggestedMove && explanation && explanation.reasons.length > 0) {
+            OutputFormatter.displaySuggestedMove(
+              explanation.move || suggestedMove,
+              null,
+              explanation.reasons
+            );
+          }
         } catch (error) {
           OutputFormatter.suggestionWarning(error.message);
           suggestedMove = null;
         }
       }
 
-      const prompt = suggestedMove 
-        ? `Your move (suggested: ${suggestedMove}, press Enter to use): `
+      const prompt = suggestedMove
+        ? `Your move (press Enter to use ${
+            explanation?.move || suggestedMove
+          }): `
         : `Your move: `;
-      
+
       const myMove = await input.getMove(prompt, suggestedMove);
 
       // Check for commands
       if (input.isCommand(myMove)) {
         const command = input.parseCommand(myMove);
-        const shouldContinue = await handleCommand(command, game, engine, config);
+        const shouldContinue = await handleCommand(
+          command,
+          game,
+          engine,
+          config
+        );
         if (!shouldContinue) {
           OutputFormatter.goodbye();
           return;
@@ -144,7 +169,11 @@ async function gameLoop(game, engine, input, config, appConfig) {
       // Validate and apply player's move
       try {
         const result = game.makeMove(myMove);
-        OutputFormatter.move(game.getPlayerColorName(), MoveValidator.formatMove(result), true);
+        OutputFormatter.move(
+          game.getPlayerColorName(),
+          MoveValidator.formatMove(result),
+          true
+        );
       } catch (error) {
         OutputFormatter.invalidMove();
         continue;
@@ -165,16 +194,23 @@ async function gameLoop(game, engine, input, config, appConfig) {
         OutputFormatter.gameOver(gameOverInfo);
         return;
       }
-      
+
       OutputFormatter.emptyLine();
     } else {
       // Opponent's turn
-      const opponentMove = await input.getMove(`${game.getOpponentColorName()}'s move: `);
+      const opponentMove = await input.getMove(
+        `${game.getOpponentColorName()}'s move: `
+      );
 
       // Check for commands (opponent can also use commands)
       if (input.isCommand(opponentMove)) {
         const command = input.parseCommand(opponentMove);
-        const shouldContinue = await handleCommand(command, game, engine, config);
+        const shouldContinue = await handleCommand(
+          command,
+          game,
+          engine,
+          config
+        );
         if (!shouldContinue) {
           OutputFormatter.goodbye();
           return;
@@ -185,7 +221,11 @@ async function gameLoop(game, engine, input, config, appConfig) {
       // Validate and apply opponent's move
       try {
         const result = game.makeMove(opponentMove);
-        OutputFormatter.move(game.getOpponentColorName(), MoveValidator.formatMove(result), false);
+        OutputFormatter.move(
+          game.getOpponentColorName(),
+          MoveValidator.formatMove(result),
+          false
+        );
       } catch (error) {
         OutputFormatter.invalidMove();
         continue;
@@ -243,9 +283,9 @@ async function main() {
 
   // Handle config commands
   if (commands.config) {
-    if (commands.config.action === 'show') {
+    if (commands.config.action === "show") {
       console.log(configManager.getFormattedConfig());
-    } else if (commands.config.action === 'set') {
+    } else if (commands.config.action === "set") {
       try {
         configManager.set(commands.config.key, commands.config.value);
         console.log(`✓ Set ${commands.config.key} = ${commands.config.value}`);
@@ -253,9 +293,9 @@ async function main() {
         console.error(`✗ Error: ${error.message}`);
         process.exit(1);
       }
-    } else if (commands.config.action === 'reset') {
+    } else if (commands.config.action === "reset") {
       configManager.reset();
-      console.log('✓ Configuration reset to defaults');
+      console.log("✓ Configuration reset to defaults");
     }
     return;
   }
@@ -311,7 +351,7 @@ async function main() {
     if (!color) {
       color = await input.getPlayerColor();
     }
-    
+
     const game = new GameManager(color);
 
     // Load FEN if provided

@@ -77,6 +77,14 @@ export class CommandLineParser {
       .action(() => {
         this.configCommand = { action: 'reset' };
       });
+
+    // Add help subcommand
+    this.program
+      .command('help')
+      .description('Display help information')
+      .action(() => {
+        this.program.help();
+      });
   }
 
   /**

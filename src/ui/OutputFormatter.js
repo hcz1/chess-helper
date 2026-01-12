@@ -562,4 +562,56 @@ export class OutputFormatter {
   static analysisComplete() {
     this.succeedSpinner("Analysis complete!");
   }
+
+  /**
+   * Display a rich move explanation with bullet points.
+   * @param {Object} explanation - Explanation object from MoveExplainer
+   * @param {string} explanation.move - Move in SAN notation
+   * @param {Array<string>} explanation.reasons - Array of explanation reasons
+   * @param {string} [formattedEval] - Optional formatted evaluation string
+   */
+  static displayMoveExplanation(explanation, formattedEval = null) {
+    if (!explanation || !explanation.reasons || explanation.reasons.length === 0) {
+      return;
+    }
+
+    // Build the explanation display
+    const moveText = COLORS.highlight(explanation.move);
+    const evalText = formattedEval ? ` (${COLORS.success(formattedEval)})` : "";
+
+    console.log();
+    console.log(`${COLORS.info("💡 Best move:")} ${moveText}${evalText}`);
+    console.log();
+    console.log(COLORS.dim("   Why this move?"));
+
+    for (const reason of explanation.reasons) {
+      console.log(`   ${COLORS.suggestion("•")} ${reason}`);
+    }
+
+    console.log();
+  }
+
+  /**
+   * Display a suggested move with explanation inline.
+   * @param {string} move - Suggested move in SAN notation
+   * @param {string} formattedEval - Formatted evaluation string
+   * @param {Array<string>} reasons - Array of explanation reasons
+   */
+  static displaySuggestedMove(move, formattedEval, reasons = []) {
+    const moveText = COLORS.highlight(move);
+    const evalText = formattedEval ? ` (${COLORS.success(formattedEval)})` : "";
+
+    console.log();
+    console.log(`${COLORS.info("💡 Suggested:")} ${moveText}${evalText}`);
+
+    if (reasons && reasons.length > 0) {
+      console.log();
+      console.log(COLORS.dim("   Why?"));
+      for (const reason of reasons) {
+        console.log(`   ${COLORS.suggestion("•")} ${reason}`);
+      }
+    }
+
+    console.log();
+  }
 }

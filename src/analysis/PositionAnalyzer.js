@@ -1,4 +1,5 @@
 import { Chess } from "chess.js";
+import { MoveExplainer } from "./MoveExplainer.js";
 
 /**
  * Analyzes chess positions and provides detailed evaluation information.
@@ -56,13 +57,17 @@ export class PositionAnalyzer {
           // Keep UCI format if conversion fails
         }
         
+        // Get rich explanation from MoveExplainer
+        const richExplanation = MoveExplainer.explain(move.move, game, move.score);
+        
         return {
           rank: index + 1,
           move: sanMove,
           uciMove: move.move,
           evaluation: move.score,
           formattedEval: this.formatEvaluation(move.score),
-          explanation: this.explainMove(move.move, game)
+          explanation: richExplanation.summary || this.explainMove(move.move, game),
+          reasons: richExplanation.reasons || []
         };
       });
     } catch (error) {
@@ -124,6 +129,17 @@ export class PositionAnalyzer {
     } else {
       return "Black is winning";
     }
+  }
+
+  /**
+   * Get a rich explanation for a move with multiple reasons.
+   * @param {string} uciMove - Move in UCI format (e.g., "e2e4")
+   * @param {Chess} game - Chess.js game instance
+   * @param {Object} score - Optional evaluation score
+   * @returns {Object} Rich explanation object with move, reasons array
+   */
+  static getRichExplanation(uciMove, game, score = null) {
+    return MoveExplainer.explain(uciMove, game, score);
   }
 
   /**
