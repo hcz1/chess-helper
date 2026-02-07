@@ -7,7 +7,7 @@ Your chess-helper can now be installed and run as a global CLI tool! Here's ever
 ### 1. Package Configuration ✓
 - **package.json** updated with:
   - `bin` field → makes `chess-helper` command available
-  - `engines` → requires Node.js 16+
+  - `engines` → requires Node.js 20+
   - `files` → specifies what gets published
   - `repository` → for GitHub integration (update with your repo URL)
 

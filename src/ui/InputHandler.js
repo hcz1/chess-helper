@@ -1,4 +1,4 @@
-import readline from "readline";
+import readline from "node:readline";
 import chalk from "chalk";
 import { CommandParser } from "./CommandParser.js";
 
@@ -35,6 +35,42 @@ export class InputHandler {
         resolve(answer);
       });
     });
+  }
+
+  /**
+   * Show the startup menu and return the chosen action.
+   * This runs before asking for any other game-specific prompts.
+   * @returns {Promise<{action: 'new', color: 'w'|'b'}|{action: 'quit'}>}
+   */
+  async getStartupAction() {
+    const choice = (
+      await this.ask(
+        "\nWhat would you like to do?\n" +
+          "  1) Start a new game (White)\n" +
+          "  2) Start a new game (Black)\n" +
+          "  3) Quit\n" +
+          "Choose (1/2/3): "
+      )
+    )
+      .trim()
+      .toLowerCase();
+
+    if (choice === "1" || choice === "w" || choice === "white") {
+      return { action: "new", color: "w" };
+    }
+    if (choice === "2" || choice === "b" || choice === "black") {
+      return { action: "new", color: "b" };
+    }
+    if (
+      choice === "3" ||
+      choice === "q" ||
+      choice === "quit" ||
+      choice === "exit"
+    ) {
+      return { action: "quit" };
+    }
+
+    throw new Error("Invalid choice. Please enter 1, 2, or 3.");
   }
 
   /**

@@ -21,6 +21,8 @@ export class CommandLineParser {
    * @private
    */
   setupProgram() {
+    const parseInteger = (value) => Number.parseInt(value, 10);
+
     // Read package.json for version
     const packageJson = JSON.parse(
       readFileSync(join(__dirname, '../../package.json'), 'utf-8')
@@ -35,7 +37,7 @@ export class CommandLineParser {
 
     // Add global options
     this.program
-      .option('-d, --depth <number>', 'Engine search depth', parseInt, 15)
+      .option('-d, --depth <number>', 'Engine search depth', parseInteger, 15)
       .option('-c, --color <color>', 'Player color (w/white or b/black)')
       .option('-f, --fen <string>', 'Start from FEN position')
       .option('--no-hints', 'Disable move suggestions')
@@ -50,8 +52,8 @@ export class CommandLineParser {
     this.program
       .command('analyze <fen>')
       .description('Analyze a chess position from FEN notation')
-      .option('-d, --depth <number>', 'Analysis depth', parseInt, 20)
-      .option('-m, --moves <number>', 'Number of top moves to show', parseInt, 5)
+      .option('-d, --depth <number>', 'Analysis depth', parseInteger, 20)
+      .option('-m, --moves <number>', 'Number of top moves to show', parseInteger, 5)
       .action((fen, options) => {
         this.analyzeCommand = { fen, ...options };
       });
@@ -95,6 +97,19 @@ export class CommandLineParser {
   parse(args = process.argv) {
     this.program.parse(args);
     const options = this.program.opts();
+
+    // Commander can route `--depth` to the parent program when the flag comes
+    // after the <fen> positional argument. If analyze depth is still at its
+    // default, treat a non-default global depth as the intended analyze depth.
+    if (
+      this.analyzeCommand &&
+      typeof this.analyzeCommand.depth === 'number' &&
+      this.analyzeCommand.depth === 20 &&
+      typeof options.depth === 'number' &&
+      options.depth !== 15
+    ) {
+      this.analyzeCommand.depth = options.depth;
+    }
 
     return {
       options: {

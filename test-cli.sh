@@ -25,6 +25,10 @@ echo "2️⃣ Testing --help:"
 chess-helper --help
 echo ""
 
+echo "3️⃣ Running unit tests:"
+npm test
+echo ""
+
 echo "✅ Basic tests passed!"
 echo ""
 echo "To test interactively, run: chess-helper"

@@ -82,17 +82,20 @@ Run the application:
 npm start
 ```
 
-You'll be prompted to choose your color:
+You'll be prompted with a startup menu:
 ```
 ♟ Chess Move Helper
 
 ⏳ Initializing chess engine...
 ✅ Engine ready!
 
-Are you playing white or black? (w/b):
+What would you like to do?
+  1) Start a new game (White)
+  2) Start a new game (Black)
+  3) Quit
+Choose (1/2/3):
 ```
-
-Enter `w` for white or `b` for black.
+Enter `1`/`2` (or `w`/`b`) to start a new game, or `3` to quit.
 
 ### Making Moves
 
@@ -287,7 +290,7 @@ The modular architecture makes it easy to extend:
 
 **Solutions**:
 - Increase `initTimeout` in `config/default.json`
-- Check Node.js version (requires 16+)
+- Check Node.js version (requires 20+)
 - Ensure WASM support is enabled
 
 ### Invalid Move Errors
@@ -329,7 +332,7 @@ The modular architecture makes it easy to extend:
 
 - `chess.js`: Chess game logic and move validation
 - `stockfish`: Stockfish chess engine (WASM)
-- `readline`: Built-in Node.js module for CLI input
+- `node:readline`: Built-in Node.js module for CLI input
 
 ## Version History
 

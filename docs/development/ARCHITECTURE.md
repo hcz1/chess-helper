@@ -166,7 +166,7 @@ The architecture supports easy extension:
 
 - `chess.js` - Chess game logic and move validation
 - `stockfish` - Stockfish chess engine (WASM)
-- `readline` - Built-in Node.js module for CLI input
+- `node:readline` - Built-in Node.js module for CLI input
 - `chalk` - Terminal colors and styling
 - `boxen` - Boxed messages
 - `table` - Formatted tables

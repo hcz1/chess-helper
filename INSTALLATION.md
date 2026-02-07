@@ -132,7 +132,7 @@ npm install
 
 ## Requirements
 
-- Node.js 16.x or higher
+- Node.js 20.x or higher
 - npm or yarn
 - macOS, Linux, or Windows
 

@@ -252,7 +252,7 @@ black wins by checkmate!
 
 ### Compatibility
 
-- ✅ Node.js 16+ (ES modules, WASM support)
+- ✅ Node.js 20+ (ES modules, WASM support)
 - ✅ macOS (tested)
 - ✅ Linux (should work)
 - ✅ Windows (should work with minor path adjustments)

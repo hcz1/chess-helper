@@ -6,7 +6,7 @@ Your chess-helper is now ready to be installed as a global CLI tool!
 
 1. **package.json** - Configured with:
    - `bin` field pointing to `src/index.js`
-   - `engines` requirement (Node.js 16+)
+  - `engines` requirement (Node.js 20+)
    - `files` list (what gets published)
    - `repository` field (update with your GitHub URL)
 

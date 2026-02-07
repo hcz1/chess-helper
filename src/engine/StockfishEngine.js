@@ -8,11 +8,43 @@ import { ENGINE_CONFIG } from "./EngineConfig.js";
  * Handles WASM initialization, UCI protocol, and move analysis.
  */
 export class StockfishEngine {
-  constructor() {
+  /**
+   * @param {Object} [options]
+   * @param {number} [options.depth]
+   * @param {number} [options.initTimeout]
+   * @param {number} [options.moveTimeout]
+   * @param {number} [options.threads]
+   * @param {number} [options.hashSize]
+   */
+  constructor(options = {}) {
     this.engine = null;
     this.engineReady = false;
     this.engineCrashed = false;
     this.messageHandlers = new Map();
+
+    // Serialize all "go" searches; UCI output isn't request-scoped.
+    this._queue = Promise.resolve();
+
+    this._uciOk = false;
+    this._optionsApplied = false;
+
+    this.config = {
+      depth: Number.isFinite(options.depth)
+        ? options.depth
+        : ENGINE_CONFIG.DEFAULT_DEPTH,
+      initTimeout: Number.isFinite(options.initTimeout)
+        ? options.initTimeout
+        : ENGINE_CONFIG.INIT_TIMEOUT,
+      moveTimeout: Number.isFinite(options.moveTimeout)
+        ? options.moveTimeout
+        : ENGINE_CONFIG.MOVE_TIMEOUT,
+      threads: Number.isFinite(options.threads)
+        ? options.threads
+        : ENGINE_CONFIG.UCI_OPTIONS.Threads,
+      hashSize: Number.isFinite(options.hashSize)
+        ? options.hashSize
+        : ENGINE_CONFIG.UCI_OPTIONS.Hash,
+    };
   }
 
   /**
@@ -107,9 +139,7 @@ export class StockfishEngine {
 
       // Set up message listener
       this.engine.listener = (line) => {
-        if (line === "uciok") {
-          this.engineReady = true;
-        }
+        if (line === "uciok") this._uciOk = true;
         // Notify all registered handlers
         for (const handler of this.messageHandlers.values()) {
           handler(line);
@@ -122,32 +152,94 @@ export class StockfishEngine {
   }
 
   /**
-   * Wait for the engine to be ready by sending UCI command and waiting for response.
+   * Wait for the engine to be ready:
+   * 1) uci -> uciok
+   * 2) setoption (Threads/Hash)
+   * 3) isready -> readyok
    * @returns {Promise<void>}
    * @throws {Error} If engine initialization times out or crashes
    */
   async waitForReady() {
     return new Promise((resolve, reject) => {
+      if (this.engineCrashed) {
+        reject(new Error("Engine crashed during initialization"));
+        return;
+      }
+
+      const handlerId = `init-${Date.now()}-${Math.random()}`;
+      let settled = false;
+
+      const cleanup = () => {
+        this.messageHandlers.delete(handlerId);
+        clearTimeout(timeout);
+      };
+
+      const settle = (fn) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        fn();
+      };
+
       const timeout = setTimeout(() => {
-        reject(new Error("Engine initialization timeout"));
-      }, ENGINE_CONFIG.INIT_TIMEOUT);
+        settle(() => reject(new Error("Engine initialization timeout")));
+      }, this.config.initTimeout);
+
+      this.messageHandlers.set(handlerId, (line) => {
+        if (this.engineCrashed) {
+          settle(() => reject(new Error("Engine crashed during initialization")));
+          return;
+        }
+
+        if (line === "uciok") {
+          try {
+            this._applyUciOptions();
+            this.sendCommand("isready");
+          } catch (e) {
+            settle(() => reject(e));
+          }
+          return;
+        }
+
+        if (line === "readyok") {
+          this.engineReady = true;
+          settle(() => resolve());
+        }
+      });
 
       // Initialize the engine with UCI protocol
-      this.sendCommand("uci");
-
-      const checkReady = setInterval(() => {
-        if (this.engineReady) {
-          clearInterval(checkReady);
-          clearTimeout(timeout);
-          resolve();
-        }
-        if (this.engineCrashed) {
-          clearInterval(checkReady);
-          clearTimeout(timeout);
-          reject(new Error("Engine crashed during initialization"));
-        }
-      }, 100);
+      try {
+        this.sendCommand("uci");
+      } catch (e) {
+        settle(() => reject(e));
+      }
     });
+  }
+
+  _applyUciOptions() {
+    if (this._optionsApplied) return;
+    this._optionsApplied = true;
+
+    // These options are supported by Stockfish and improve speed.
+    if (Number.isFinite(this.config.threads)) {
+      this.sendCommand(`setoption name Threads value ${this.config.threads}`);
+    }
+    if (Number.isFinite(this.config.hashSize)) {
+      this.sendCommand(`setoption name Hash value ${this.config.hashSize}`);
+    }
+  }
+
+  _enqueue(taskFn) {
+    const run = async () => {
+      if (this.engineCrashed) throw new Error("Chess engine is not running");
+      if (!this.engine) throw new Error("Engine not initialized");
+      if (!this.engineReady) throw new Error("Engine not ready");
+      return taskFn();
+    };
+
+    const p = this._queue.then(run, run);
+    this._queue = p.catch(() => {});
+    return p;
   }
 
   /**
@@ -157,32 +249,65 @@ export class StockfishEngine {
    * @returns {Promise<string>} Best move in UCI format (e.g., "e2e4")
    * @throws {Error} If engine is not ready or times out
    */
-  async getBestMove(fen, depth = ENGINE_CONFIG.DEFAULT_DEPTH) {
-    return new Promise((resolve, reject) => {
-      const requestId = Date.now() + Math.random(); // Unique ID for this request
-      const timeout = setTimeout(() => {
-        this.messageHandlers.delete(requestId);
-        reject(new Error("Engine response timeout"));
-      }, ENGINE_CONFIG.MOVE_TIMEOUT);
+  async getBestMove(fen, depth = this.config.depth) {
+    return this._enqueue(
+      () =>
+        new Promise((resolve, reject) => {
+          const requestId = `bestmove-${Date.now()}-${Math.random()}`;
+          let settled = false;
+          let timedOut = false;
+          let drainTimer = null;
 
-      try {
-        this.sendCommand(`position fen ${fen}`);
-        this.sendCommand(`go depth ${depth}`);
-
-        this.messageHandlers.set(requestId, (line) => {
-          if (line.startsWith("bestmove")) {
-            const bestMove = line.split(" ")[1];
-            clearTimeout(timeout);
+          const cleanup = () => {
             this.messageHandlers.delete(requestId);
-            resolve(bestMove);
+            clearTimeout(timeout);
+            if (drainTimer) clearTimeout(drainTimer);
+          };
+
+          const settle = (fn) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            fn();
+          };
+
+          const timeout = setTimeout(() => {
+            timedOut = true;
+            try {
+              this.sendCommand("stop");
+            } catch (e) {
+              // ignore
+            }
+            // If we can't get a bestmove after stop, assume engine is wedged.
+            drainTimer = setTimeout(() => {
+              this.engineCrashed = true;
+              try {
+                this.terminate();
+              } catch (e) {
+                // ignore
+              }
+              settle(() => reject(new Error("Engine response timeout")));
+            }, 2000);
+          }, this.config.moveTimeout);
+
+          try {
+            this.sendCommand(`position fen ${fen}`);
+            this.sendCommand(`go depth ${depth}`);
+
+            this.messageHandlers.set(requestId, (line) => {
+              if (!line.startsWith("bestmove")) return;
+              const bestMove = line.split(" ")[1];
+              if (timedOut) {
+                settle(() => reject(new Error("Engine response timeout")));
+              } else {
+                settle(() => resolve(bestMove));
+              }
+            });
+          } catch (error) {
+            settle(() => reject(error));
           }
-        });
-      } catch (error) {
-        clearTimeout(timeout);
-        this.messageHandlers.delete(requestId);
-        reject(error);
-      }
-    });
+        })
+    );
   }
 
   /**
@@ -193,73 +318,107 @@ export class StockfishEngine {
    * @returns {Promise<Object>} Analysis object with moves and evaluations
    * @throws {Error} If engine is not ready or times out
    */
-  async getAnalysis(fen, numMoves = 3, depth = ENGINE_CONFIG.DEFAULT_DEPTH) {
-    return new Promise((resolve, reject) => {
-      const requestId = Date.now() + Math.random();
-      const timeout = setTimeout(() => {
-        this.messageHandlers.delete(requestId);
-        reject(new Error("Engine analysis timeout"));
-      }, ENGINE_CONFIG.MOVE_TIMEOUT * 2); // Longer timeout for analysis
+  async getAnalysis(fen, numMoves = 3, depth = this.config.depth) {
+    return this._enqueue(
+      () =>
+        new Promise((resolve, reject) => {
+          const requestId = `analysis-${Date.now()}-${Math.random()}`;
+          let settled = false;
+          let timedOut = false;
+          let drainTimer = null;
 
-      const moves = [];
-      let lastEvaluation = null;
+          const moves = [];
+          let lastEvaluation = null;
 
-      try {
-        // Set MultiPV option for multiple variations
-        this.sendCommand(`setoption name MultiPV value ${numMoves}`);
-        this.sendCommand(`position fen ${fen}`);
-        this.sendCommand(`go depth ${depth}`);
-
-        this.messageHandlers.set(requestId, (line) => {
-          // Parse info lines for move evaluations
-          if (line.startsWith("info") && line.includes("pv")) {
-            const analysis = this.parseInfoLine(line);
-            if (analysis) {
-              // Update or add move to list
-              const existingIndex = moves.findIndex(m => m.multipv === analysis.multipv);
-              if (existingIndex >= 0) {
-                moves[existingIndex] = analysis;
-              } else {
-                moves.push(analysis);
-              }
-              
-              // Track the last evaluation (for the best move)
-              if (analysis.multipv === 1) {
-                lastEvaluation = analysis.score;
-              }
+          const resetMultiPv = () => {
+            try {
+              this.sendCommand("setoption name MultiPV value 1");
+            } catch (e) {
+              // ignore
             }
-          }
-          
-          if (line.startsWith("bestmove")) {
-            clearTimeout(timeout);
+          };
+
+          const cleanup = () => {
             this.messageHandlers.delete(requestId);
-            
-            // Reset MultiPV to 1
-            this.sendCommand(`setoption name MultiPV value 1`);
-            
-            // Sort moves by multipv
-            moves.sort((a, b) => a.multipv - b.multipv);
-            
-            resolve({
-              bestMove: line.split(" ")[1],
-              evaluation: lastEvaluation,
-              moves: moves,
-              depth: depth
+            clearTimeout(timeout);
+            if (drainTimer) clearTimeout(drainTimer);
+            resetMultiPv();
+          };
+
+          const settle = (fn) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            fn();
+          };
+
+          const timeout = setTimeout(() => {
+            timedOut = true;
+            try {
+              this.sendCommand("stop");
+            } catch (e) {
+              // ignore
+            }
+            drainTimer = setTimeout(() => {
+              this.engineCrashed = true;
+              try {
+                this.terminate();
+              } catch (e) {
+                // ignore
+              }
+              settle(() => reject(new Error("Engine analysis timeout")));
+            }, 2000);
+          }, this.config.moveTimeout * 2);
+
+          try {
+            this.sendCommand(`setoption name MultiPV value ${numMoves}`);
+            this.sendCommand(`position fen ${fen}`);
+            this.sendCommand(`go depth ${depth}`);
+
+            this.messageHandlers.set(requestId, (line) => {
+              if (line.startsWith("info") && line.includes("pv")) {
+                const analysis = this.parseInfoLine(line);
+                if (analysis) {
+                  const existingIndex = moves.findIndex(
+                    (m) => m.multipv === analysis.multipv
+                  );
+                  if (existingIndex >= 0) {
+                    moves[existingIndex] = analysis;
+                  } else {
+                    moves.push(analysis);
+                  }
+
+                  if (analysis.multipv === 1) {
+                    lastEvaluation = analysis.score;
+                  }
+                }
+                return;
+              }
+
+              if (!line.startsWith("bestmove")) return;
+              const bestMove = line.split(" ")[1];
+
+              // Sort moves by multipv
+              moves.sort((a, b) => a.multipv - b.multipv);
+
+              if (timedOut) {
+                settle(() => reject(new Error("Engine analysis timeout")));
+              } else {
+                settle(() =>
+                  resolve({
+                    bestMove,
+                    evaluation: lastEvaluation,
+                    moves,
+                    depth,
+                  })
+                );
+              }
             });
+          } catch (error) {
+            settle(() => reject(error));
           }
-        });
-      } catch (error) {
-        clearTimeout(timeout);
-        this.messageHandlers.delete(requestId);
-        // Reset MultiPV on error
-        try {
-          this.sendCommand(`setoption name MultiPV value 1`);
-        } catch (e) {
-          // Ignore
-        }
-        reject(error);
-      }
-    });
+        })
+    );
   }
 
   /**

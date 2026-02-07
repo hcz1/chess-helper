@@ -11,15 +11,19 @@ import { MoveExplainer } from "./analysis/MoveExplainer.js";
 import { CommandLineParser } from "./cli/CommandLineParser.js";
 import { ConfigManager } from "./config/ConfigManager.js";
 
+let activeEngine = null;
+let activeInput = null;
+
 /**
  * Handle special commands during gameplay.
  * @param {Object} command - Parsed command object
  * @param {GameManager} game - Game manager instance
  * @param {StockfishEngine} engine - Chess engine instance
  * @param {ConfigManager} config - Config manager instance
+ * @param {Object} appConfig - Application configuration
  * @returns {Promise<boolean>} True if should continue game, false if should exit
  */
-async function handleCommand(command, game, engine, config) {
+async function handleCommand(command, game, engine, config, appConfig) {
   switch (command.name) {
     case "board":
       OutputFormatter.displayBoard(game, game.getLastMove());
@@ -55,7 +59,8 @@ async function handleCommand(command, game, engine, config) {
         const topMoves = await PositionAnalyzer.getTopMoves(
           engine,
           game.getFEN(),
-          3
+          3,
+          appConfig?.analysis?.analysisDepth ?? appConfig?.engine?.depth
         );
         await OutputFormatter.analysisComplete();
         OutputFormatter.displayTopMoves(topMoves);
@@ -123,7 +128,10 @@ async function gameLoop(game, engine, input, config, appConfig) {
       let explanation = null;
       if (appConfig.display.showHints) {
         try {
-          suggestedMove = await engine.getBestMove(game.getFEN());
+          suggestedMove = await engine.getBestMove(
+            game.getFEN(),
+            appConfig?.engine?.depth
+          );
 
           // Get rich explanation for the suggested move
           explanation = MoveExplainer.explain(suggestedMove, game.getGame());
@@ -157,7 +165,8 @@ async function gameLoop(game, engine, input, config, appConfig) {
           command,
           game,
           engine,
-          config
+          config,
+          appConfig
         );
         if (!shouldContinue) {
           OutputFormatter.goodbye();
@@ -209,7 +218,8 @@ async function gameLoop(game, engine, input, config, appConfig) {
           command,
           game,
           engine,
-          config
+          config,
+          appConfig
         );
         if (!shouldContinue) {
           OutputFormatter.goodbye();
@@ -269,6 +279,17 @@ function cleanup(engine, input) {
   }
 }
 
+function cleanupActive() {
+  try {
+    OutputFormatter.stopSpinner();
+  } catch (e) {
+    // ignore
+  }
+  cleanup(activeEngine, activeInput);
+  activeEngine = null;
+  activeInput = null;
+}
+
 /**
  * Main application entry point.
  */
@@ -302,7 +323,11 @@ async function main() {
 
   // Handle analyze command
   if (commands.analyze) {
-    const engine = new StockfishEngine();
+    const engine = new StockfishEngine({
+      ...appConfig.engine,
+      depth: commands.analyze.depth ?? appConfig.engine.depth,
+    });
+    activeEngine = engine;
     try {
       OutputFormatter.welcome();
       OutputFormatter.initializing();
@@ -314,24 +339,26 @@ async function main() {
       const topMoves = await PositionAnalyzer.getTopMoves(
         engine,
         commands.analyze.fen,
-        commands.analyze.moves || 5
+        commands.analyze.moves || 5,
+        commands.analyze.depth ?? appConfig.engine.depth
       );
       OutputFormatter.analysisComplete();
       OutputFormatter.displayTopMoves(topMoves);
 
-      engine.terminate();
+      cleanupActive();
     } catch (error) {
       OutputFormatter.stopSpinner();
       OutputFormatter.error(error.message);
-      engine.terminate();
+      cleanupActive();
       process.exit(1);
     }
     return;
   }
 
   // Normal game mode
-  const engine = new StockfishEngine();
+  const engine = new StockfishEngine(appConfig.engine);
   let input = null;
+  activeEngine = engine;
 
   try {
     // Display welcome message
@@ -345,11 +372,18 @@ async function main() {
 
     // Create input handler AFTER spinner is done
     input = new InputHandler();
+    activeInput = input;
 
-    // Get player color (from CLI or prompt)
+    // Get player color (from CLI/config, or startup menu)
     let color = appConfig.game.defaultColor;
     if (!color) {
-      color = await input.getPlayerColor();
+      const startup = await input.getStartupAction();
+      if (startup.action === "quit") {
+        OutputFormatter.goodbye();
+        cleanupActive();
+        return;
+      }
+      color = startup.color;
     }
 
     const game = new GameManager(color);
@@ -371,11 +405,11 @@ async function main() {
     await gameLoop(game, engine, input, configManager, appConfig);
 
     // Clean up
-    cleanup(engine, input);
+    cleanupActive();
   } catch (error) {
     OutputFormatter.stopSpinner();
     OutputFormatter.error(error.message);
-    cleanup(engine, input);
+    cleanupActive();
     process.exit(1);
   }
 }
@@ -383,10 +417,12 @@ async function main() {
 // Handle graceful shutdown
 process.on("SIGINT", () => {
   OutputFormatter.goodbye();
+  cleanupActive();
   process.exit(0);
 });
 
 process.on("SIGTERM", () => {
+  cleanupActive();
   process.exit(0);
 });
 
