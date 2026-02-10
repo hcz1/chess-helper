@@ -5,6 +5,7 @@ A command-line chess assistant powered by Stockfish that helps you analyze posit
 ## Features
 
 ### Core Features (Phase 3 ✨ NEW!)
+
 - **ASCII Board Visualization**: Beautiful Unicode chess board with piece symbols (♔♕♖♗♘♙)
 - **Move History**: Complete game history with undo/redo functionality
 - **Position Analysis**: Deep analysis with evaluation scores and top move alternatives
@@ -12,12 +13,14 @@ A command-line chess assistant powered by Stockfish that helps you analyze posit
 - **Auto-Confirm Moves**: Press Enter to quickly accept suggested moves
 
 ### Engine Features
+
 - **Move Suggestions**: Get the best move recommendations from Stockfish 17.1
 - **Multiple Move Formats**: Supports algebraic notation (e4, Nf3), long algebraic (e2e4), and more
 - **Evaluation Scores**: See position evaluations in centipawns or mate sequences
 - **Multi-Move Analysis**: View top 3 moves with explanations
 
 ### Game Features
+
 - **Game State Tracking**: Automatically detects checkmate, stalemate, draws, and other game-ending conditions
 - **Turn Management**: Correctly handles turn order for both white and black pieces
 - **Material Tracking**: See captured pieces and material advantage
@@ -43,22 +46,26 @@ chess-helper
 ### Install from Source
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd chess-helper
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Link globally (makes `chess-helper` command available everywhere):
+
 ```bash
 npm link
 ```
 
 4. Run from anywhere:
+
 ```bash
 chess-helper
 ```
@@ -78,11 +85,13 @@ For detailed installation instructions and troubleshooting, see [INSTALLATION.md
 ### Starting a Game
 
 Run the application:
+
 ```bash
 npm start
 ```
 
 You'll be prompted with a startup menu:
+
 ```
 ♟ Chess Move Helper
 
@@ -95,6 +104,7 @@ What would you like to do?
   3) Quit
 Choose (1/2/3):
 ```
+
 Enter `1`/`2` (or `w`/`b`) to start a new game, or `3` to quit.
 
 ### Making Moves
@@ -102,6 +112,7 @@ Enter `1`/`2` (or `w`/`b`) to start a new game, or `3` to quit.
 The application will prompt you for moves based on whose turn it is:
 
 **Your Turn:**
+
 ```
 Your move (suggested: e4, press Enter to use):
 ```
@@ -109,6 +120,7 @@ Your move (suggested: e4, press Enter to use):
 Simply press **Enter** to use the suggested move, or type your own move.
 
 **Opponent's Turn:**
+
 ```
 black's move:
 ```
@@ -228,29 +240,29 @@ Edit `config/default.json` to customize settings:
 ```json
 {
   "engine": {
-    "depth": 15,                    // Search depth (higher = stronger, slower)
-    "initTimeout": 10000,           // Engine initialization timeout (ms)
-    "moveTimeout": 30000            // Move calculation timeout (ms)
+    "depth": 15, // Search depth (higher = stronger, slower)
+    "initTimeout": 10000, // Engine initialization timeout (ms)
+    "moveTimeout": 30000 // Move calculation timeout (ms)
   },
   "game": {
-    "showSuggestions": true,        // Show move suggestions
-    "validateMoves": true           // Validate moves before applying
+    "showSuggestions": true, // Show move suggestions
+    "validateMoves": true // Validate moves before applying
   },
   "ui": {
-    "showExamples": true,           // Show examples in error messages
-    "useEmojis": true               // Use emoji in output
+    "showExamples": true, // Show examples in error messages
+    "useEmojis": true // Use emoji in output
   },
   "display": {
-    "showBoardAfterMove": true,     // Auto-display board after moves
-    "showMoveHistory": false,       // Auto-show history after moves
-    "showAnalysis": false,          // Auto-analyze positions
-    "showCapturedPieces": true,     // Show captured pieces
-    "showMaterialAdvantage": true   // Show material count
+    "showBoardAfterMove": true, // Auto-display board after moves
+    "showMoveHistory": false, // Auto-show history after moves
+    "showAnalysis": false, // Auto-analyze positions
+    "showCapturedPieces": true, // Show captured pieces
+    "showMaterialAdvantage": true // Show material count
   },
   "analysis": {
-    "showTopMoves": 3,              // Number of alternative moves
-    "analysisDepth": 15,            // Analysis search depth
-    "showEvaluation": true          // Show evaluation scores
+    "showTopMoves": 3, // Number of alternative moves
+    "analysisDepth": 15, // Analysis search depth
+    "showEvaluation": true // Show evaluation scores
   }
 }
 ```
@@ -268,6 +280,7 @@ Edit `config/default.json` to customize settings:
 ### Code Quality
 
 The codebase follows these standards:
+
 - **JSDoc comments** on all public APIs
 - **Error handling** with try-catch blocks
 - **Resource cleanup** in finally blocks
@@ -289,6 +302,7 @@ The modular architecture makes it easy to extend:
 **Problem**: Engine fails to initialize within 10 seconds
 
 **Solutions**:
+
 - Increase `initTimeout` in `config/default.json`
 - Check Node.js version (requires 20+)
 - Ensure WASM support is enabled
@@ -298,6 +312,7 @@ The modular architecture makes it easy to extend:
 **Problem**: Valid moves are rejected
 
 **Solutions**:
+
 - Use standard algebraic notation (e.g., `e4`, `Nf3`)
 - Include piece notation for non-pawn moves (e.g., `Nf3` not `f3`)
 - For captures, use `x` (e.g., `exd5`)
@@ -307,6 +322,7 @@ The modular architecture makes it easy to extend:
 **Problem**: Engine takes too long to suggest moves
 
 **Solutions**:
+
 - Reduce `depth` in `config/default.json` (try 10-12)
 - Reduce `moveTimeout` to fail faster
 - Note: Complex positions naturally take longer
@@ -316,6 +332,7 @@ The modular architecture makes it easy to extend:
 **Problem**: Application hangs after game ends
 
 **Solutions**:
+
 - Press Ctrl+C to force exit
 - Use `quit` command during game
 - Check for open readline interfaces
@@ -383,17 +400,20 @@ ISC
 - **[docs/README.md](docs/README.md)** - Complete documentation index
 
 ### Developer Documentation
+
 - **[Architecture](docs/development/ARCHITECTURE.md)** - System architecture and design
 - **[CLI Setup](docs/development/CLI_SETUP.md)** - CLI setup guide
 - **[Testing](docs/development/TEST_INSTRUCTIONS.md)** - Testing instructions
 
 ### Project History
+
 - **[Changelog](docs/history/CHANGELOG.md)** - Version history
 - **[Phase Reports](docs/history/)** - Phase 1, 2, and 3 completion reports
 
 ## Support
 
 For issues, questions, or suggestions:
+
 - Open an issue on GitHub
 - Check the troubleshooting section above
 - Review the [architecture documentation](docs/development/ARCHITECTURE.md)
