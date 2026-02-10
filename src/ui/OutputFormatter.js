@@ -271,7 +271,19 @@ export class OutputFormatter {
 
     // We'll use a simple inline board renderer for now
     // This will be replaced when we integrate BoardRenderer properly
-    console.log("\n" + this.renderSimpleBoard(actualGame, lastMove, showInfo));
+    // Rotate board for black so black is on the bottom (and coordinates match the view).
+    let orientation = "w";
+    if (game?.getPlayerColorName) {
+      orientation = game.getPlayerColorName() === "black" ? "b" : "w";
+    } else if (game?.playerColor) {
+      orientation = game.playerColor === "b" ? "b" : "w";
+    } else if (game?.isPlayingWhite === false) {
+      orientation = "b";
+    }
+
+    console.log(
+      "\n" + this.renderSimpleBoard(actualGame, lastMove, showInfo, orientation)
+    );
   }
 
   /**
@@ -282,7 +294,7 @@ export class OutputFormatter {
    * @returns {string} Board string
    * @private
    */
-  static renderSimpleBoard(game, lastMove, showInfo) {
+  static renderSimpleBoard(game, lastMove, showInfo, orientation = "w") {
     const PIECE_SYMBOLS = {
       K: "♚",
       Q: "♛",
@@ -299,17 +311,27 @@ export class OutputFormatter {
     };
 
     const board = game.board();
-    let output = COLORS.coordinates("  a b c d e f g h") + "\n";
+    const isBlackPerspective = orientation === "b";
+    const files = isBlackPerspective ? "hgfedcba" : "abcdefgh";
+    const rankOrder = isBlackPerspective
+      ? [1, 2, 3, 4, 5, 6, 7, 8]
+      : [8, 7, 6, 5, 4, 3, 2, 1];
+
+    // Brighter, higher-contrast highlight (selected/last-move squares).
+    const HIGHLIGHT_CELL = chalk.bgHex("#ffd60a").black.bold;
+
+    let output =
+      COLORS.coordinates(`  ${files.split("").join(" ")}`) + "\n";
 
     // Chess.js board array: board[0] = rank 8, board[7] = rank 1
-    for (let rank = 7; rank >= 0; rank--) {
-      const displayRank = rank + 1;
-      const boardIndex = 7 - rank; // Invert: rank 8 (display) = board[0], rank 1 (display) = board[7]
-      output += COLORS.coordinates(`${displayRank} `);
+    for (const rankNumber of rankOrder) {
+      const boardRankIndex = 8 - rankNumber; // rank 8 -> 0, rank 1 -> 7
+      output += COLORS.coordinates(`${rankNumber} `);
 
-      for (let file = 0; file < 8; file++) {
-        const square = board[boardIndex][file];
-        const squareName = "abcdefgh"[file] + displayRank;
+      for (const fileLetter of files) {
+        const boardFileIndex = "abcdefgh".indexOf(fileLetter);
+        const square = board[boardRankIndex][boardFileIndex];
+        const squareName = fileLetter + rankNumber;
         const isHighlighted =
           lastMove &&
           (squareName === lastMove.from || squareName === lastMove.to);
@@ -325,20 +347,18 @@ export class OutputFormatter {
               ? COLORS.whitePiece(symbol)
               : COLORS.blackPiece(symbol);
           output += isHighlighted
-            ? chalk.bgYellow(coloredSymbol) + " "
+            ? HIGHLIGHT_CELL(symbol + " ")
             : coloredSymbol + " ";
         } else {
           const dot = "·";
-          output += isHighlighted
-            ? chalk.bgYellow(dot) + " "
-            : COLORS.dim(dot) + " ";
+          output += isHighlighted ? HIGHLIGHT_CELL(dot + " ") : COLORS.dim(dot) + " ";
         }
       }
 
-      output += COLORS.coordinates(`${displayRank}`) + "\n";
+      output += COLORS.coordinates(`${rankNumber}`) + "\n";
     }
 
-    output += COLORS.coordinates("  a b c d e f g h") + "\n";
+    output += COLORS.coordinates(`  ${files.split("").join(" ")}`) + "\n";
     return output;
   }
 

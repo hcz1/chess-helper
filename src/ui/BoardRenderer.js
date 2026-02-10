@@ -25,42 +25,50 @@ export class BoardRenderer {
    * Render the chess board with current position.
    * @param {Object} game - Chess.js game instance
    * @param {Object} lastMove - Last move object with 'from' and 'to' properties
+   * @param {'w'|'b'} orientation - Board orientation ('w' = white at bottom, 'b' = black at bottom)
    * @returns {string} Formatted board string
    */
-  static renderBoard(game, lastMove = null) {
+  static renderBoard(game, lastMove = null, orientation = 'w') {
     const board = game.board();
     let output = '\n';
     
+    const isBlackPerspective = orientation === 'b';
+    const files = isBlackPerspective ? 'hgfedcba' : 'abcdefgh';
+    const rankOrder = isBlackPerspective ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
+
+    // Brighter, higher-contrast highlight (selected/last-move squares).
+    const HIGHLIGHT_CELL = chalk.bgHex('#ffd60a').black.bold;
+
     // Column labels
-    output += chalk.dim('  a b c d e f g h') + '\n';
-    
-    // Render each rank (8 to 1)
+    output += chalk.dim(`  ${files.split('').join(' ')}`) + '\n';
+
+    // Render ranks in the chosen orientation
     // Chess.js board array: board[0] = rank 8, board[7] = rank 1
-    for (let rank = 7; rank >= 0; rank--) {
-      const displayRank = rank + 1;
-      const boardIndex = 7 - rank; // Invert: rank 8 (display) = board[0], rank 1 (display) = board[7]
-      output += chalk.dim(`${displayRank} `);
-      
-      for (let file = 0; file < 8; file++) {
-        const square = board[boardIndex][file];
-        const squareName = this.getSquareName(file, displayRank);
+    for (const rankNumber of rankOrder) {
+      const boardRankIndex = 8 - rankNumber; // rank 8 -> 0, rank 1 -> 7
+      output += chalk.dim(`${rankNumber} `);
+
+      for (const fileLetter of files) {
+        const boardFileIndex = 'abcdefgh'.indexOf(fileLetter);
+        const square = board[boardRankIndex][boardFileIndex];
+        const squareName = fileLetter + rankNumber;
         const isHighlighted = this.isSquareHighlighted(squareName, lastMove);
-        
+
         if (square) {
           const symbol = this.getPieceSymbol(square);
           const coloredSymbol = square.color === 'w' ? chalk.white(symbol) : chalk.gray(symbol);
-          output += isHighlighted ? chalk.bgYellow(coloredSymbol) + ' ' : coloredSymbol + ' ';
+          output += isHighlighted ? HIGHLIGHT_CELL(symbol + ' ') : coloredSymbol + ' ';
         } else {
           const dot = '·';
-          output += isHighlighted ? chalk.bgYellow(dot) + ' ' : chalk.dim(dot) + ' ';
+          output += isHighlighted ? HIGHLIGHT_CELL(dot + ' ') : chalk.dim(dot) + ' ';
         }
       }
-      
-      output += chalk.dim(`${displayRank}`) + '\n';
+
+      output += chalk.dim(`${rankNumber}`) + '\n';
     }
-    
+
     // Column labels again
-    output += chalk.dim('  a b c d e f g h') + '\n';
+    output += chalk.dim(`  ${files.split('').join(' ')}`) + '\n';
     
     return output;
   }
@@ -71,10 +79,17 @@ export class BoardRenderer {
    * @param {Object} lastMove - Last move object
    * @param {boolean} showCaptured - Whether to show captured pieces
    * @param {boolean} showMaterial - Whether to show material advantage
+   * @param {'w'|'b'} orientation - Board orientation ('w' = white at bottom, 'b' = black at bottom)
    * @returns {string} Complete board display with info
    */
-  static renderBoardWithInfo(game, lastMove = null, showCaptured = true, showMaterial = true) {
-    let output = this.renderBoard(game, lastMove);
+  static renderBoardWithInfo(
+    game,
+    lastMove = null,
+    showCaptured = true,
+    showMaterial = true,
+    orientation = 'w'
+  ) {
+    let output = this.renderBoard(game, lastMove, orientation);
     
     if (showCaptured) {
       const captured = this.getCapturedPieces(game);
@@ -117,12 +132,12 @@ export class BoardRenderer {
   /**
    * Convert file and rank to square name.
    * @param {number} file - File index (0-7)
-   * @param {number} rank - Rank index (0-7)
+   * @param {number} rank - Rank number (1-8)
    * @returns {string} Square name (e.g., 'e4')
    */
   static getSquareName(file, rank) {
     const files = 'abcdefgh';
-    return files[file] + (rank + 1);
+    return files[file] + rank;
   }
 
   /**
