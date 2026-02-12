@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import chalk from "chalk";
 import { StockfishEngine } from "./engine/StockfishEngine.js";
 import { GameManager } from "./game/GameManager.js";
 import { MoveValidator } from "./game/MoveValidator.js";
@@ -301,6 +302,12 @@ async function main() {
   // Initialize configuration manager
   const configManager = new ConfigManager();
   const appConfig = configManager.mergeWithCliOptions(options);
+
+  // Disable ANSI colors globally when requested (CLI/config).
+  // chalk's level is writable and affects all chalk usages in the process.
+  if (appConfig?.display?.colors === false) {
+    chalk.level = 0;
+  }
 
   // Handle config commands
   if (commands.config) {

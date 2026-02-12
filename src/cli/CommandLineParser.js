@@ -98,6 +98,8 @@ export class CommandLineParser {
     this.program.parse(args);
     const options = this.program.opts();
 
+    const fromCli = (key) => this.program.getOptionValueSource(key) === 'cli';
+
     // Commander can route `--depth` to the parent program when the flag comes
     // after the <fen> positional argument. If analyze depth is still at its
     // default, treat a non-default global depth as the intended analyze depth.
@@ -113,12 +115,22 @@ export class CommandLineParser {
 
     return {
       options: {
-        depth: options.depth,
-        color: this.normalizeColor(options.color),
-        fen: options.fen,
-        hints: options.hints,
-        debug: options.debug,
-        noColor: options.noColor,
+        // Only treat option values as overrides when explicitly supplied.
+        // This allows persisted config values to take effect.
+        depth: fromCli('depth') ? options.depth : undefined,
+
+        // `--color <side>` (player color) currently collides with `--no-color`
+        // (output colors). We keep backwards compatible behavior by treating
+        // string values as player color and boolean false as `--no-color`.
+        color:
+          fromCli('color') && typeof options.color === 'string'
+            ? this.normalizeColor(options.color)
+            : null,
+
+        fen: fromCli('fen') ? options.fen : undefined,
+        hints: fromCli('hints') ? options.hints : undefined,
+        debug: fromCli('debug') ? options.debug : undefined,
+        noColor: fromCli('color') && options.color === false ? true : undefined,
       },
       commands: {
         analyze: this.analyzeCommand,

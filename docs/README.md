@@ -6,7 +6,7 @@ Welcome to the chess-helper documentation! This directory contains all developer
 
 ### User Documentation (Top Level)
 - **[README.md](../README.md)** - Main user guide and overview
-- **[INSTALLATION.md](../INSTALLATION.md)** - Installation instructions
+- **[INSTALLATION.md](../INSTALLATION.md)** - Redirects to README installation section
 - **[EXAMPLES.md](../EXAMPLES.md)** - Usage examples and workflows
 - **[PUBLISHING.md](../PUBLISHING.md)** - Guide for publishing to npm
 
@@ -33,7 +33,7 @@ Historical and redundant documentation:
 
 ### For Users
 - Start with [README.md](../README.md)
-- Need to install? See [INSTALLATION.md](../INSTALLATION.md)
+- Need to install? See the Installation section in [README.md](../README.md)
 - Want examples? See [EXAMPLES.md](../EXAMPLES.md)
 
 ### For Developers

@@ -132,7 +132,8 @@ export class OutputFormatter {
   static welcome() {
     const welcomeText = COLORS.primary.bold("♟  Chess Move Helper");
     const subtitle = chalk.dim("Powered by Stockfish");
-    const box = this.createBox(`${welcomeText}\n${subtitle}`, {
+    const handle = chalk.dim("X: @hczdev");
+    const box = this.createBox(`${welcomeText}\n${subtitle}\n${handle}`, {
       borderStyle: "double",
       padding: 1,
       margin: 1,
