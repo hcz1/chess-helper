@@ -9,8 +9,10 @@ import { OutputFormatter } from "./ui/OutputFormatter.js";
 import { CommandParser } from "./ui/CommandParser.js";
 import { PositionAnalyzer } from "./analysis/PositionAnalyzer.js";
 import { MoveExplainer } from "./analysis/MoveExplainer.js";
+import { OpeningDetector } from "./analysis/OpeningDetector.js";
 import { CommandLineParser } from "./cli/CommandLineParser.js";
 import { ConfigManager } from "./config/ConfigManager.js";
+import { OpeningTracker } from "./game/OpeningTracker.js";
 
 let activeEngine = null;
 let activeInput = null;
@@ -22,9 +24,17 @@ let activeInput = null;
  * @param {StockfishEngine} engine - Chess engine instance
  * @param {ConfigManager} config - Config manager instance
  * @param {Object} appConfig - Application configuration
+ * @param {OpeningTracker} openingTracker - Opening tracker instance
  * @returns {Promise<boolean>} True if should continue game, false if should exit
  */
-async function handleCommand(command, game, engine, config, appConfig) {
+async function handleCommand(
+  command,
+  game,
+  engine,
+  config,
+  appConfig,
+  openingTracker
+) {
   switch (command.name) {
     case "board":
       OutputFormatter.displayBoard(game, game.getLastMove());
@@ -39,6 +49,7 @@ async function handleCommand(command, game, engine, config, appConfig) {
         game.undo();
         OutputFormatter.undoConfirmation(1);
         OutputFormatter.displayBoard(game, game.getLastMove());
+        updateOpeningState(game, appConfig, openingTracker);
       } else {
         OutputFormatter.warning("No moves to undo.");
       }
@@ -49,6 +60,7 @@ async function handleCommand(command, game, engine, config, appConfig) {
         game.redo();
         OutputFormatter.redoConfirmation(1);
         OutputFormatter.displayBoard(game, game.getLastMove());
+        updateOpeningState(game, appConfig, openingTracker);
       } else {
         OutputFormatter.warning("No moves to redo.");
       }
@@ -73,6 +85,14 @@ async function handleCommand(command, game, engine, config, appConfig) {
 
     case "config":
       OutputFormatter.info(config.getFormattedConfig());
+      break;
+
+    case "opening":
+      if (openingTracker) {
+        OutputFormatter.displayOpeningStatus(openingTracker.getStatus());
+      } else {
+        OutputFormatter.displayOpeningStatus({ status: "unknown" });
+      }
       break;
 
     case "help":
@@ -111,14 +131,41 @@ async function logEvaluation(engine, game, appConfig) {
 }
 
 /**
+ * Update opening tracker and optionally print transition messages.
+ * @param {GameManager} game - Game manager instance
+ * @param {Object} appConfig - Application configuration
+ * @param {OpeningTracker} openingTracker - Opening tracker instance
+ */
+function updateOpeningState(game, appConfig, openingTracker) {
+  if (!openingTracker) {
+    return;
+  }
+
+  const fen = game.getFEN();
+  const ply = OpeningDetector.getPlyFromFen(fen);
+  const openingEvent = openingTracker.update(fen, ply);
+
+  if (!appConfig?.display?.showOpening) {
+    return;
+  }
+
+  if (openingEvent.event === "detected" || openingEvent.event === "refined") {
+    OutputFormatter.displayOpeningDetected(openingEvent);
+  } else if (openingEvent.event === "left_line") {
+    OutputFormatter.displayOutOfBook(openingEvent.lastKnownOpening);
+  }
+}
+
+/**
  * Main game loop - handles turn-by-turn gameplay.
  * @param {GameManager} game - Game manager instance
  * @param {StockfishEngine} engine - Chess engine instance
  * @param {InputHandler} input - Input handler instance
  * @param {ConfigManager} config - Config manager instance
  * @param {Object} appConfig - Application configuration
+ * @param {OpeningTracker} openingTracker - Opening tracker instance
  */
-async function gameLoop(game, engine, input, config, appConfig) {
+async function gameLoop(game, engine, input, config, appConfig, openingTracker) {
   // Display initial board
   OutputFormatter.displayBoard(game, null);
 
@@ -167,7 +214,8 @@ async function gameLoop(game, engine, input, config, appConfig) {
           game,
           engine,
           config,
-          appConfig
+          appConfig,
+          openingTracker
         );
         if (!shouldContinue) {
           OutputFormatter.goodbye();
@@ -191,6 +239,7 @@ async function gameLoop(game, engine, input, config, appConfig) {
 
       // Display board after player's move
       OutputFormatter.displayBoard(game, game.getLastMove());
+      updateOpeningState(game, appConfig, openingTracker);
 
       const gameOverAfterPlayerMove = game.isGameOver();
 
@@ -220,7 +269,8 @@ async function gameLoop(game, engine, input, config, appConfig) {
           game,
           engine,
           config,
-          appConfig
+          appConfig,
+          openingTracker
         );
         if (!shouldContinue) {
           OutputFormatter.goodbye();
@@ -244,6 +294,7 @@ async function gameLoop(game, engine, input, config, appConfig) {
 
       // Display board after opponent's move
       OutputFormatter.displayBoard(game, game.getLastMove());
+      updateOpeningState(game, appConfig, openingTracker);
 
       const gameOverAfterOpponentMove = game.isGameOver();
 
@@ -330,6 +381,7 @@ async function main() {
 
   // Handle analyze command
   if (commands.analyze) {
+    const openingDetector = new OpeningDetector();
     const engine = new StockfishEngine({
       ...appConfig.engine,
       depth: commands.analyze.depth ?? appConfig.engine.depth,
@@ -341,6 +393,18 @@ async function main() {
       await engine.initialize();
       await engine.waitForReady();
       OutputFormatter.engineReady();
+
+      const opening = openingDetector.detect(
+        commands.analyze.fen,
+        OpeningDetector.getPlyFromFen(commands.analyze.fen)
+      );
+      if (opening) {
+        OutputFormatter.displayOpeningStatus({
+          status: "known",
+          currentOpening: opening,
+          lastKnownOpening: opening,
+        });
+      }
 
       OutputFormatter.analyzing();
       const topMoves = await PositionAnalyzer.getTopMoves(
@@ -394,6 +458,7 @@ async function main() {
     }
 
     const game = new GameManager(color);
+    const openingTracker = new OpeningTracker();
 
     // Load FEN if provided
     if (appConfig.game.startFen) {
@@ -407,9 +472,17 @@ async function main() {
 
     // Display game start message
     OutputFormatter.gameStart(game.getPlayerColorName());
+    updateOpeningState(game, appConfig, openingTracker);
 
     // Run game loop
-    await gameLoop(game, engine, input, configManager, appConfig);
+    await gameLoop(
+      game,
+      engine,
+      input,
+      configManager,
+      appConfig,
+      openingTracker
+    );
 
     // Clean up
     cleanupActive();

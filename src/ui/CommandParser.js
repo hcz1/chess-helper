@@ -9,6 +9,8 @@ export class CommandParser {
   static COMMANDS = {
     'board': 'board',
     'b': 'board',
+    'opening': 'opening',
+    'o': 'opening',
     'history': 'history',
     'h': 'history',
     'undo': 'undo',
@@ -70,6 +72,7 @@ export class CommandParser {
     return `
 Available Commands:
   board, b       - Display the current board position
+  opening, o     - Show opening detection status
   history, h     - Show move history
   undo, u        - Undo the last move (both sides)
   redo, r        - Redo a previously undone move
@@ -93,6 +96,7 @@ Move Input:
   static getCommandDescription(commandName) {
     const descriptions = {
       'board': 'Display the current board position',
+      'opening': 'Show opening detection status',
       'history': 'Show move history',
       'undo': 'Undo the last move',
       'redo': 'Redo a previously undone move',

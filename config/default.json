@@ -15,6 +15,7 @@
     "showCapturedPieces": true,
     "showMaterialAdvantage": true,
     "showHints": true,
+    "showOpening": true,
     "showEvaluation": true,
     "theme": "default"
   },

@@ -1,0 +1,111 @@
+/**
+ * Curated opening catalog for v1 opening detection.
+ *
+ * detectFromPly: earliest ply where the opening label is considered reliable.
+ * maxPly: latest ply where detection should still be considered opening phase.
+ */
+export const OPENING_CATALOG = [
+  {
+    id: "queens-gambit",
+    family: "Queen's Gambit",
+    name: "Queen's Gambit",
+    eco: "D06",
+    priority: 10,
+    detectFromPly: 3,
+    maxPly: 16,
+    lines: [
+      ["d4", "d5", "c4", "e6", "Nc3", "Nf6"],
+      ["d4", "d5", "c4", "dxc4", "Nf3", "Nf6"],
+    ],
+  },
+  {
+    id: "queens-gambit-accepted",
+    family: "Queen's Gambit",
+    name: "Accepted",
+    eco: "D20",
+    priority: 30,
+    detectFromPly: 4,
+    maxPly: 16,
+    lines: [["d4", "d5", "c4", "dxc4", "Nf3", "Nf6"]],
+  },
+  {
+    id: "queens-gambit-declined",
+    family: "Queen's Gambit",
+    name: "Declined",
+    eco: "D30",
+    priority: 30,
+    detectFromPly: 4,
+    maxPly: 16,
+    lines: [["d4", "d5", "c4", "e6", "Nc3", "Nf6"]],
+  },
+  {
+    id: "sicilian-defense",
+    family: "Sicilian Defense",
+    name: "Sicilian Defense",
+    eco: "B20",
+    priority: 10,
+    detectFromPly: 2,
+    maxPly: 20,
+    lines: [
+      ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "a6"],
+      ["e4", "c5", "Nf3", "Nc6", "d4", "cxd4", "Nxd4"],
+      ["e4", "c5", "c3", "Nf6", "e5"],
+    ],
+  },
+  {
+    id: "sicilian-open",
+    family: "Sicilian Defense",
+    name: "Open Sicilian",
+    eco: "B30",
+    priority: 20,
+    detectFromPly: 7,
+    maxPly: 20,
+    lines: [
+      ["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "a6"],
+      ["e4", "c5", "Nf3", "Nc6", "d4", "cxd4", "Nxd4"],
+    ],
+  },
+  {
+    id: "sicilian-najdorf",
+    family: "Sicilian Defense",
+    name: "Najdorf Variation",
+    eco: "B90",
+    priority: 40,
+    detectFromPly: 10,
+    maxPly: 20,
+    lines: [["e4", "c5", "Nf3", "d6", "d4", "cxd4", "Nxd4", "Nf6", "Nc3", "a6"]],
+  },
+  {
+    id: "italian-game",
+    family: "Italian Game",
+    name: "Italian Game",
+    eco: "C50",
+    priority: 10,
+    detectFromPly: 5,
+    maxPly: 18,
+    lines: [
+      ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "c3", "Nf6", "d3"],
+      ["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "d4", "exd4"],
+    ],
+  },
+  {
+    id: "italian-giuoco-piano",
+    family: "Italian Game",
+    name: "Giuoco Piano",
+    eco: "C54",
+    priority: 25,
+    detectFromPly: 6,
+    maxPly: 18,
+    lines: [["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "c3", "Nf6", "d3"]],
+  },
+  {
+    id: "italian-two-knights",
+    family: "Italian Game",
+    name: "Two Knights Defense",
+    eco: "C55",
+    priority: 25,
+    detectFromPly: 6,
+    maxPly: 18,
+    lines: [["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "d4", "exd4"]],
+  },
+];

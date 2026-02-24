@@ -554,6 +554,87 @@ export class OutputFormatter {
   }
 
   /**
+   * Format an opening name with optional family/variation/ECO.
+   * @param {Object|null} opening - Opening info object
+   * @returns {string} Human-readable opening label
+   * @private
+   */
+  static formatOpeningLabel(opening) {
+    if (!opening) {
+      return "";
+    }
+
+    const family = opening.family || "";
+    const name = opening.name || "";
+    const hasDistinctVariation =
+      name && family && name.toLowerCase() !== family.toLowerCase();
+    const main = hasDistinctVariation ? `${family}, ${name}` : (name || family);
+
+    if (!main) {
+      return "";
+    }
+
+    return opening.eco ? `${main} (${opening.eco})` : main;
+  }
+
+  /**
+   * Display opening detection/refinement message.
+   * @param {Object} openingInfo - Opening event payload
+   */
+  static displayOpeningDetected(openingInfo) {
+    const opening = openingInfo?.opening || openingInfo?.currentOpening || openingInfo;
+    const label = this.formatOpeningLabel(opening);
+    if (!label) {
+      return;
+    }
+
+    if (openingInfo?.event === "refined") {
+      console.log(COLORS.info(`📚 Opening update: ${label}`));
+      return;
+    }
+
+    console.log(COLORS.info(`📚 Opening: ${label}`));
+  }
+
+  /**
+   * Display out-of-book transition message.
+   * @param {Object|null} lastKnownOpening - Last recognized opening
+   */
+  static displayOutOfBook(lastKnownOpening) {
+    const label = this.formatOpeningLabel(lastKnownOpening);
+    if (label) {
+      console.log(COLORS.warning(`📖 Out of known line (last: ${label})`));
+      return;
+    }
+    console.log(COLORS.warning("📖 Out of known line."));
+  }
+
+  /**
+   * Display opening status for manual command usage.
+   * @param {Object} openingInfo - Status payload from OpeningTracker
+   */
+  static displayOpeningStatus(openingInfo) {
+    const status = openingInfo?.status || "unknown";
+    const current = openingInfo?.currentOpening || openingInfo?.opening || null;
+    const lastKnown = openingInfo?.lastKnownOpening || null;
+
+    if (status === "known" && current) {
+      const label = this.formatOpeningLabel(current);
+      if (label) {
+        console.log(COLORS.info(`📚 Opening: ${label}`));
+        return;
+      }
+    }
+
+    if (status === "out_of_book") {
+      this.displayOutOfBook(lastKnown);
+      return;
+    }
+
+    console.log(COLORS.dim("No known opening detected in current position."));
+  }
+
+  /**
    * Display a warning message.
    * @param {string} message - Warning message
    */
